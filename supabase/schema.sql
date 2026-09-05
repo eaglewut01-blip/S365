@@ -6,39 +6,6 @@
 create extension if not exists "pgcrypto";
 
 -- ----------------------------------------------------------------------------
--- Helper: current user's role / profile lookups (used inside RLS policies)
--- ----------------------------------------------------------------------------
-create or replace function public.current_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role from public.profiles where id = auth.uid();
-$$;
-
-create or replace function public.is_staff()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select role in ('owner', 'staff') from public.profiles where id = auth.uid()), false);
-$$;
-
-create or replace function public.current_branch()
-returns uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select branch_id from public.profiles where id = auth.uid();
-$$;
-
--- ----------------------------------------------------------------------------
 -- branches
 -- ----------------------------------------------------------------------------
 create table if not exists public.branches (
@@ -264,6 +231,43 @@ begin
     end if;
   end if;
 end;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- Helper: current user's role / profile lookups (used inside RLS policies
+-- and inside book_class/cancel_booking above). LANGUAGE SQL functions are
+-- validated against the catalog at CREATE time (unlike plpgsql, which
+-- defers), so these must come after public.profiles exists — hence this
+-- block sits here rather than at the top of the file.
+-- ----------------------------------------------------------------------------
+create or replace function public.current_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+create or replace function public.is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select role in ('owner', 'staff') from public.profiles where id = auth.uid()), false);
+$$;
+
+create or replace function public.current_branch()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select branch_id from public.profiles where id = auth.uid();
 $$;
 
 -- ============================================================================
