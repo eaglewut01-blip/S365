@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --color-base: #0a0a0b;
+  --color-panel: #1a1a1b;
+  --color-panel-raised: #242423;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --color-text-hi: #f6f5f0;
+  --color-text-lo: #a6a49c;
+  --color-text-faint: #68665f;
+  --color-volt: #f2a91e;
+  --color-volt-ink: #241800;
+  --color-coral: #e8272e;
+  --color-coral-bg: rgba(232, 39, 46, 0.14);
+  --color-mint: #3fbf6b;
+  --color-mint-bg: rgba(63, 191, 107, 0.14);
+  --color-amber: #c97b12;
+  --color-amber-bg: rgba(201, 123, 18, 0.14);
+}
+
+@theme inline {
+  --color-base: var(--color-base);
+  --color-panel: var(--color-panel);
+  --color-panel-raised: var(--color-panel-raised);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text-hi: var(--color-text-hi);
+  --color-text-lo: var(--color-text-lo);
+  --color-text-faint: var(--color-text-faint);
+  --color-volt: var(--color-volt);
+  --color-volt-ink: var(--color-volt-ink);
+  --color-coral: var(--color-coral);
+  --color-coral-bg: var(--color-coral-bg);
+  --color-mint: var(--color-mint);
+  --color-mint-bg: var(--color-mint-bg);
+  --color-amber: var(--color-amber);
+  --color-amber-bg: var(--color-amber-bg);
+  --font-heading: var(--font-bebas-neue), "Arial Narrow", sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-text-hi);
+  font-family: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--color-volt);
+  color: var(--color-volt-ink);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid var(--color-volt);
+  outline-offset: 1px;
+}

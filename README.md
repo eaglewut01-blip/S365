@@ -1,0 +1,114 @@
+# S365 Fitness — ระบบบริหารจัดการฟิตเนส
+
+Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) ระบบจัดการฟิตเนสสำหรับ S365
+แยกสิทธิ์การใช้งานเป็น 3 กลุ่ม: **เจ้าของ/พนักงาน**, **เทรนเนอร์**, **ลูกค้า** โดยแต่ละกลุ่มมีหน้าจอ
+ของตัวเองและมองไม่เห็นฟีเจอร์ของกลุ่มอื่น (บังคับด้วย Row Level Security ที่ตัวฐานข้อมูล ไม่ใช่แค่ที่ UI)
+
+## สารบัญ
+
+1. [โครงสร้างโปรเจกต์](#โครงสร้างโปรเจกต์)
+2. [ตั้งค่า Supabase](#ตั้งค่า-supabase)
+3. [รันโปรเจกต์บนเครื่อง](#รันโปรเจกต์บนเครื่อง)
+4. [สร้างบัญชีเจ้าของคนแรก](#สร้างบัญชีเจ้าของคนแรก)
+5. [Deploy ขึ้น production](#deploy-ขึ้น-production)
+6. [สถาปัตยกรรมสิทธิ์การใช้งาน](#สถาปัตยกรรมสิทธิ์การใช้งาน)
+7. [ข้อจำกัดที่ตั้งใจลดความซับซ้อน](#ข้อจำกัดที่ตั้งใจลดความซับซ้อน)
+
+## โครงสร้างโปรเจกต์
+
+```
+supabase/schema.sql       ตาราง + RLS policies + trigger ทั้งหมด (รันครั้งเดียวตอนตั้งโปรเจกต์)
+src/app/login             หน้าล็อกอิน (ใช้ร่วมกันทั้ง 3 กลุ่ม แล้ว redirect ตาม role)
+src/app/owner/**          แดชบอร์ดเจ้าของ/พนักงาน (ภาพรวม, สมาชิก, ตารางคลาส, เช็คอิน, PT, การเงิน, รายงาน, ทีมงาน)
+src/app/trainer/**        พอร์ทัลเทรนเนอร์ (ตารางของฉัน, บันทึกเซสชัน PT — ปุ่ม "บันทึก" เท่านั้น)
+src/app/member/**         พอร์ทัลลูกค้า (ภาพรวม, จองคลาส, ยืนยัน/ปฏิเสธเซสชัน PT, การเงิน)
+src/lib/supabase/*        Supabase client สำหรับ browser / server / middleware / admin (service role)
+src/lib/actions/*         Server Actions ที่ทำการเปลี่ยนแปลงข้อมูลทั้งหมด (ตรวจ role ซ้ำอีกชั้นนอกจาก RLS)
+middleware.ts             บังคับล็อกอิน + กันไม่ให้ข้ามไปหน้าของ role อื่นแม้พิมพ์ URL ตรงๆ
+```
+
+## ตั้งค่า Supabase
+
+1. สร้างโปรเจกต์ใหม่ที่ [supabase.com](https://supabase.com) (เลือก region ใกล้ผู้ใช้งาน เช่น Singapore)
+2. เปิด **SQL Editor → New query** วางเนื้อหาทั้งหมดจากไฟล์ [`supabase/schema.sql`](./supabase/schema.sql) แล้วกด Run
+   - สร้างตาราง, ฟังก์ชัน, trigger และ RLS policy ทั้งหมดในคำสั่งเดียว ปลอดภัยที่จะรันซ้ำ (ใช้ `if not exists` / `or replace`)
+3. ไปที่ **Authentication → Emails** เพื่อปรับข้อความอีเมลเชิญ (Invite user) ให้เป็นภาษาไทยได้ตามต้องการ
+   (ระบบใช้ฟีเจอร์ "Invite" ของ Supabase Auth ในการสร้างบัญชีพนักงาน/เทรนเนอร์/ลูกค้า — ผู้ใช้จะได้อีเมลให้ตั้งรหัสผ่านเอง)
+4. ไปที่ **Authentication → URL Configuration** ตั้งค่า:
+   - **Site URL**: โดเมนจริงตอน deploy (เช่น `https://s365.vercel.app`)
+   - **Redirect URLs**: เพิ่ม `http://localhost:3000/**` (ตอน dev) และโดเมน production `https://your-domain.com/**`
+5. คัดลอกค่าจาก **Project Settings → API**:
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ ห้ามใช้ค่านี้ฝั่ง client เด็ดขาด ใช้เฉพาะใน Server Action)
+
+## รันโปรเจกต์บนเครื่อง
+
+```bash
+cp .env.local.example .env.local   # แล้วใส่ค่า Supabase 3 ตัวจากขั้นตอนก่อนหน้า
+npm install
+npm run dev
+```
+
+เปิด http://localhost:3000 — ถ้ายังไม่ได้ล็อกอินจะเด้งไปหน้า `/login` อัตโนมัติ
+
+## สร้างบัญชีเจ้าของคนแรก
+
+ระบบไม่มีหน้า "สมัครสมาชิก" สาธารณะ (ตั้งใจ — ฟิตเนสไม่ควรให้ใครก็ได้สมัครเป็นเจ้าของ) บัญชีแรกต้องสร้างผ่าน
+Supabase Studio ครั้งเดียว หลังจากนั้นเจ้าของจะเชิญพนักงาน/เทรนเนอร์ต่อได้เองในหน้า **ทีมงาน** และเชิญลูกค้าได้ในหน้า **สมาชิก**
+
+1. **SQL Editor** รันเพื่อสร้างสาขาแรก:
+   ```sql
+   insert into public.branches (name) values ('สาขาทองหล่อ') returning id;
+   ```
+   จด `id` ที่ได้ไว้ (เป็น UUID)
+2. ไปที่ **Authentication → Users → Add user → Create new user**
+   - กรอกอีเมล/รหัสผ่าน แล้วติ๊ก **Auto Confirm User**
+   - ในช่อง **User Metadata (raw)** ใส่ (แทน `<branch-id>` ด้วย UUID จากข้อ 1):
+     ```json
+     { "role": "owner", "full_name": "ชื่อเจ้าของ", "branch_id": "<branch-id>" }
+     ```
+3. Trigger `handle_new_user` จะสร้างแถวใน `profiles` ให้อัตโนมัติ — ล็อกอินด้วยอีเมล/รหัสผ่านนี้ที่ `/login`
+   จะเข้าสู่แดชบอร์ดเจ้าของทันที
+
+## Deploy ขึ้น production
+
+แนะนำ **Vercel** เพราะเป็นผู้พัฒนา Next.js เอง รองรับ Server Actions / Middleware ที่โปรเจกต์นี้ใช้แบบไม่ต้องตั้งค่าเพิ่ม
+(ทางเลือกอื่นที่ใช้ได้เหมือนกัน: Netlify, Cloudflare Pages ที่รองรับ Next.js runtime, หรือ self-host ด้วย `next start` บน VPS/Docker)
+
+1. Push โค้ดขึ้น GitHub แล้วไปที่ [vercel.com/new](https://vercel.com/new) เลือก repo นี้
+2. ตั้งค่า **Environment Variables** ใน Vercel project settings ให้ตรงกับ `.env.local` (3 ตัวแปรเดียวกับข้างบน)
+   - `SUPABASE_SERVICE_ROLE_KEY` ตั้งเฉพาะใน environment ของ Vercel เท่านั้น (Production/Preview) — เป็นความลับ ห้าม commit
+3. Deploy แล้วนำโดเมนที่ได้ (หรือโดเมนของคุณเองที่ผูกไว้) กลับไปอัปเดตที่ Supabase → Authentication →
+   URL Configuration (Site URL + Redirect URLs) ตามขั้นตอนที่ 4 ด้านบน มิฉะนั้นลิงก์เชิญผู้ใช้จะพาไป localhost
+4. Supabase ฝั่ง production แนะนำให้ตั้งค่า **Custom SMTP** (Authentication → Emails → SMTP Settings) แทนอีเมล
+   ทดสอบของ Supabase เอง เพราะมี rate limit ต่ำมาก ใช้จริงกับลูกค้า/พนักงานจำนวนมากไม่พอ (ใช้ Resend, Postmark, SES ก็ได้)
+5. เปิด **Point-in-time Recovery / Daily Backups** ใน Supabase (Settings → Add-ons) เพราะเป็นข้อมูลธุรกิจจริง
+
+## สถาปัตยกรรมสิทธิ์การใช้งาน
+
+- **ทุกตารางบังคับด้วย Row Level Security (RLS)** ที่ Postgres โดยตรง — ต่อให้ผู้ใช้เปิด devtools ยิง request ตรงไป
+  Supabase API ก็ยังถูกกรองสิทธิ์เหมือนเดิม ไม่ใช่กันแค่ที่หน้าเว็บ
+- **middleware.ts** กันไม่ให้เทรนเนอร์/ลูกค้าเข้าถึง URL ของกลุ่มอื่นได้แม้พิมพ์ตรงๆ (เช่น เทรนเนอร์พิมพ์ `/owner` จะถูกเด้งกลับ)
+- **เซสชัน PT แยกจอจริงตามที่ต้องการ**:
+  - เทรนเนอร์ (`/trainer/pt-sessions`) เห็น **เฉพาะปุ่ม "บันทึกเซสชัน"** — บันทึกแล้วสถานะเป็น `pending` เสมอ
+    (RLS policy `pt_trainer_insert` บังคับ status ต้องเป็น pending และ trainer_id ต้องเป็นตัวเอง)
+  - ลูกค้า (`/member/pt-sessions`) เห็น **เฉพาะปุ่ม "ยืนยัน" / "ไม่ได้ใช้บริการ"** — เทรนเนอร์แก้สถานะเองไม่ได้เลย
+  - เมื่อลูกค้ากด "ยืนยัน" ฐานข้อมูลจะตัดชั่วโมง PT ให้อัตโนมัติผ่าน DB trigger (`handle_pt_session_approved`)
+    ไม่ได้ตัดจากฝั่งแอป — กันกรณี logic ฝั่ง client ผิดพลาดหรือถูกแก้ไข
+  - ถ้าลูกค้ากด "ไม่ได้ใช้บริการ" สถานะเป็น `disputed` แสดงในแดชบอร์ดเจ้าของ/พนักงาน ให้ตัดสินใจอีกที
+- บัญชีเข้าสู่ระบบสร้างผ่าน Supabase Auth Invite เท่านั้น (ไม่มีหน้า public signup) — เจ้าของเชิญพนักงาน/เทรนเนอร์
+  จากหน้า "ทีมงาน", พนักงานเชิญลูกค้าให้มีบัญชีจากหน้า "สมาชิก" (ปุ่ม "สร้างบัญชี")
+
+## ข้อจำกัดที่ตั้งใจลดความซับซ้อน
+
+โปรเจกต์นี้ปรับจาก mockup ให้ทำงานได้จริงโดยยังคงหน้าตา/สี/โครงสร้างเดิมไว้ทั้งหมด แต่มีจุดที่ตัดความซับซ้อนออก
+เพื่อให้ส่งมอบระบบที่ทำงานถูกต้องปลอดภัยได้ทันเวลา — ควรรู้ไว้ก่อนใช้งานจริง:
+
+- **1 บัญชีพนักงาน/เจ้าของ ผูกกับ 1 สาขา** ตัว dropdown สลับสาขาในดีไซน์ต้นแบบจึงถูกทำเป็นป้ายชื่อสาขาแบบ read-only
+  แทน ถ้าต้องการให้เจ้าของคนเดียวบริหารได้หลายสาขาพร้อมกันจริง ต้องเพิ่มตาราง `branch_memberships` และปรับ RLS
+  policy ที่ใช้ `current_branch()` ให้รองรับหลายสาขาต่อ 1 คน (เป็นงานต่อยอดที่ทำได้ไม่ยาก โครงสร้างตารางรองรับอยู่แล้ว)
+- **รายงานรายได้** อิงจากตาราง `payments` ที่บันทึกทุกครั้งที่กด "บันทึกจ่ายแล้ว" เท่านั้น (ไม่มีระบบตัดบัตรเครดิต/
+  พร้อมเพย์อัตโนมัติ) ถ้าต้องการรับชำระเงินจริงผ่านเว็บ แนะนำต่อ Omise หรือ Stripe แล้วให้ webhook เรียก markPaid ให้
+- **ไม่มีการแจ้งเตือนแบบ real-time (push/SMS/LINE)** ในเวอร์ชันนี้ ข้อมูลอัปเดตเมื่อโหลดหน้าใหม่/กดปุ่ม
+  (ต่อยอดด้วย Supabase Realtime subscriptions ได้ในอนาคตถ้าต้องการให้หน้าจอเช็คอินอัปเดตสดโดยไม่ต้อง refresh)
