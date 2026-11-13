@@ -40,3 +40,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw media staged for the website (photos/video) — keep the folder structure
+# and READMEs tracked, but never commit the actual binaries (large, and they
+# don't belong in git history — see media-assets/README.md)
+media-assets/**/*.jpg
+media-assets/**/*.jpeg
+media-assets/**/*.png
+media-assets/**/*.heic
+media-assets/**/*.webp
+media-assets/**/*.mp4
+media-assets/**/*.mov
+media-assets/**/*.avi
+media-assets/**/*.webm
+
