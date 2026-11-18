@@ -9,7 +9,7 @@ const ROLE_HOME: Record<Role, string> = {
   member: "/member",
 };
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
     const role = profile?.role as Role | undefined;
     const home = role ? ROLE_HOME[role] : "/login";
 
-    if (path === "/login" || path === "/") {
+    if (path === "/login") {
       const url = request.nextUrl.clone();
       url.pathname = home;
       return NextResponse.redirect(url);

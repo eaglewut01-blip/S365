@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Dumbbell } from "lucide-react";
 import { login } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
@@ -29,7 +30,7 @@ export default function LoginPage() {
         <div className="flex flex-col gap-3">
           <div>
             <div className="mb-1.5 text-[12.5px] text-text-lo">อีเมล</div>
-            <Input type="email" name="email" placeholder="owner@sabaifit.co.th" required />
+            <Input type="email" name="email" placeholder="you@example.com" required />
           </div>
           <div>
             <div className="mb-1.5 text-[12.5px] text-text-lo">รหัสผ่าน</div>
@@ -47,6 +48,10 @@ export default function LoginPage() {
         >
           {pending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </Button>
+
+        <Link href="/" className="mt-4 block text-center text-[12.5px] text-text-faint hover:text-text-lo">
+          กลับหน้าเว็บไซต์
+        </Link>
       </form>
     </div>
   );

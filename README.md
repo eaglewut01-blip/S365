@@ -18,14 +18,28 @@ Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) ระบบจัด�
 
 ```
 supabase/schema.sql       ตาราง + RLS policies + trigger ทั้งหมด (รันครั้งเดียวตอนตั้งโปรเจกต์)
+src/app/page.tsx          หน้าเว็บสาธารณะ (ไม่ต้องล็อกอิน) ประกอบจากคอมโพเนนต์ใน src/components/site
+src/content/site.ts       ข้อมูลร้านที่แสดงบนหน้าเว็บ: เบอร์โทร, LINE, Facebook, ที่อยู่, เวลาเปิด–ปิด
+src/content/media.ts      รายการภาพที่ใช้บนหน้าเว็บ พร้อมคำบรรยายภาพ (alt)
+src/assets/site/**        ไฟล์ภาพที่ย่อขนาดสำหรับเว็บแล้ว (เทรนเนอร์, ยิม, คอมมูนิตี้, ผลลัพธ์)
 src/app/login             หน้าล็อกอิน (ใช้ร่วมกันทั้ง 3 กลุ่ม แล้ว redirect ตาม role)
 src/app/owner/**          แดชบอร์ดเจ้าของ/พนักงาน (ภาพรวม, สมาชิก, ตารางคลาส, เช็คอิน, PT, การเงิน, รายงาน, ทีมงาน)
 src/app/trainer/**        พอร์ทัลเทรนเนอร์ (ตารางของฉัน, บันทึกเซสชัน PT — ปุ่ม "บันทึก" เท่านั้น)
 src/app/member/**         พอร์ทัลลูกค้า (ภาพรวม, จองคลาส, ยืนยัน/ปฏิเสธเซสชัน PT, การเงิน)
-src/lib/supabase/*        Supabase client สำหรับ browser / server / middleware / admin (service role)
+src/lib/supabase/*        Supabase client สำหรับ browser / server / proxy / admin (service role)
 src/lib/actions/*         Server Actions ที่ทำการเปลี่ยนแปลงข้อมูลทั้งหมด (ตรวจ role ซ้ำอีกชั้นนอกจาก RLS)
-middleware.ts             บังคับล็อกอิน + กันไม่ให้ข้ามไปหน้าของ role อื่นแม้พิมพ์ URL ตรงๆ
+src/proxy.ts              บังคับล็อกอินสำหรับ /login, /owner, /trainer, /member + กันไม่ให้ข้ามไปหน้าของ role อื่น
 ```
+
+### แก้ข้อมูลบนหน้าเว็บสาธารณะ
+
+- **เบอร์โทร / LINE / Facebook / ที่อยู่ / เวลาเปิด–ปิด**: แก้ที่ `src/content/site.ts` — ช่องที่เป็น `null` จะยังไม่แสดงบนหน้าเว็บ
+  ใส่ค่าเมื่อไหร่ บล็อกนั้นจะปรากฏในส่วน "ติดต่อ" เอง
+- **เปลี่ยนหรือเพิ่มภาพ**: วางไฟล์ใน `src/assets/site/<หมวด>/` แล้วเพิ่มบรรทัด import กับรายการใน `src/content/media.ts`
+  ภาพเทรนเนอร์ใช้สัดส่วน 3:4 (900×1200), ภาพผลลัพธ์เป็นสี่เหลี่ยมจัตุรัส (1080×1080)
+- **ภาพตัวอย่างตอนแชร์ลิงก์** (LINE/Facebook): บน Vercel ใช้โดเมน production ให้อัตโนมัติ ถ้า host ที่อื่นให้ตั้ง
+  environment variable `NEXT_PUBLIC_SITE_URL` เป็นโดเมนจริง เช่น `https://your-domain.com`
+
 
 ## ตั้งค่า Supabase
 
@@ -89,7 +103,7 @@ Supabase Studio ครั้งเดียว หลังจากนั้น
 
 - **ทุกตารางบังคับด้วย Row Level Security (RLS)** ที่ Postgres โดยตรง — ต่อให้ผู้ใช้เปิด devtools ยิง request ตรงไป
   Supabase API ก็ยังถูกกรองสิทธิ์เหมือนเดิม ไม่ใช่กันแค่ที่หน้าเว็บ
-- **middleware.ts** กันไม่ให้เทรนเนอร์/ลูกค้าเข้าถึง URL ของกลุ่มอื่นได้แม้พิมพ์ตรงๆ (เช่น เทรนเนอร์พิมพ์ `/owner` จะถูกเด้งกลับ)
+- **src/proxy.ts** กันไม่ให้เทรนเนอร์/ลูกค้าเข้าถึง URL ของกลุ่มอื่นได้แม้พิมพ์ตรงๆ (เช่น เทรนเนอร์พิมพ์ `/owner` จะถูกเด้งกลับ)
 - **เซสชัน PT แยกจอจริงตามที่ต้องการ**:
   - เทรนเนอร์ (`/trainer/pt-sessions`) เห็น **เฉพาะปุ่ม "บันทึกเซสชัน"** — บันทึกแล้วสถานะเป็น `pending` เสมอ
     (RLS policy `pt_trainer_insert` บังคับ status ต้องเป็น pending และ trainer_id ต้องเป็นตัวเอง)
