@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Kanit } from "next/font/google";
 import { SiteNav } from "@/components/site/SiteNav";
 import { Hero } from "@/components/site/Hero";
+import { Ticker } from "@/components/site/Ticker";
 import { Gym } from "@/components/site/Gym";
 import { Trainers } from "@/components/site/Trainers";
 import { Results } from "@/components/site/Results";
@@ -36,8 +37,9 @@ export default function HomePage() {
       <SiteNav />
       <main>
         <Hero />
-        <Gym />
+        <Ticker />
         <Trainers />
+        <Gym />
         <Results />
         <Community />
         <Contact />

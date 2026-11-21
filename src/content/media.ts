@@ -46,6 +46,8 @@ import result08 from "@/assets/site/results/result-08.jpg";
 export interface Photo {
   src: StaticImageData;
   alt: string;
+  /** CSS object-position for cropped tiles, when the subject is off-centre. */
+  position?: string;
 }
 
 export const hero: Photo = {
@@ -77,6 +79,21 @@ export const gymPhotos: Photo[] = [
   { src: gymEzBars, alt: "ชั้นวาง EZ bar น้ำหนัก 15 ถึง 25 กิโลกรัม" },
   { src: gymSkiErg, alt: "เครื่อง SkiErg สองเครื่องริมหน้าต่าง" },
   { src: gymGlute, alt: "เครื่องฝึกกล้ามเนื้อสะโพก" },
+];
+
+// One photo per gym zone, in the same order as `zones` in site.ts.
+export const zonePhotos: Photo[] = [
+  { src: gymChestPress, alt: "เครื่องเชสต์เพรสในโซนแมชชีน" },
+  { src: gymDumbbells, alt: "ชั้นวางดัมเบลล์เรียงยาวในโซนฟรีเวท" },
+  { src: heroLoma, alt: "เทรนเนอร์ S365 เดินถือเคตเทิลเบลล์สองข้างบนลู่หญ้าเทียม", position: "55% 45%" },
+  { src: gymSkiErg, alt: "เครื่อง SkiErg สองเครื่องริมหน้าต่าง" },
+];
+
+// The three photos shown in the community section: one at the gym, two from race day.
+export const communityHighlights: Photo[] = [
+  { src: classGroup, alt: "สมาชิกและเทรนเนอร์ถ่ายรูปหมู่หลังคลาสหน้าโลโก้ S365 Fitness" },
+  { src: eventSled, alt: "นักกีฬาทีม S365 ดันสเลดในสนามแข่ง HYROX", position: "50% 20%" },
+  { src: eventJump, alt: "สมาชิกทีม S365 กระโดดฉลองหน้าป้ายเวลาเข้าเส้นชัย HYROX" },
 ];
 
 export const classPhotos: Photo[] = [

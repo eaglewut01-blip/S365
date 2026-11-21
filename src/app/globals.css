@@ -79,3 +79,63 @@ a:focus-visible,
   outline: 2px solid var(--color-volt);
   outline-offset: 2px;
 }
+
+/* ---------- Public website ---------- */
+
+/* Header: transparent over the hero photo, solid once the page scrolls.
+   Browsers without scroll-driven animations keep the solid bar. */
+.site-nav {
+  background-color: rgb(10 10 11 / 0.84);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+}
+
+@supports (animation-timeline: scroll()) {
+  .site-nav {
+    animation: site-nav-solid linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0px 420px;
+  }
+}
+
+@keyframes site-nav-solid {
+  from {
+    background-color: transparent;
+    border-bottom-color: transparent;
+    backdrop-filter: blur(0px);
+  }
+}
+
+/* Darkens the hero photo behind the header and the headline, leaving the wall digits readable. */
+.hero-shade {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(10 10 11 / 0.5) 0%,
+      rgb(10 10 11 / 0) 16%,
+      rgb(10 10 11 / 0.1) 38%,
+      rgb(10 10 11 / 0.86) 74%,
+      var(--color-base) 100%
+    ),
+    linear-gradient(90deg, rgb(10 10 11 / 0.55), transparent 55%);
+}
+
+.tile-shade {
+  background: linear-gradient(180deg, transparent 35%, rgb(0 0 0 / 0.9));
+}
+
+.ticker-track {
+  animation: ticker 60s linear infinite;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}

@@ -1,102 +1,63 @@
-import { ArrowUpRight } from "lucide-react";
 import { site } from "@/content/site";
-import { Container } from "./primitives";
-
-const rowClass = "flex items-center justify-between gap-4 py-5";
-const labelClass = "text-[13px] font-medium opacity-70";
-const valueClass = "mt-0.5 block text-[1.6rem] font-semibold leading-tight";
-const linkClass = `${rowClass} group focus-visible:outline-volt-ink`;
-
-function Arrow() {
-  return (
-    <ArrowUpRight
-      size={26}
-      aria-hidden
-      className="shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
-    />
-  );
-}
+import { Container, CtaLink } from "./primitives";
 
 export function Contact() {
   return (
-    <section id="contact" className="scroll-mt-16 bg-volt text-volt-ink">
-      <Container className="grid gap-10 py-20 md:py-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
-        <div>
-          <p className="font-heading text-[15px] tracking-[0.3em]">CONTACT</p>
-          <h2 className="mt-3 text-[clamp(2.1rem,5.4vw,3.5rem)] font-bold leading-[1.15]">
-            อยากเริ่ม
-            <br />
-            ทักมาคุยกันก่อนได้
-          </h2>
-          <p className="mt-5 max-w-md leading-relaxed text-balance">
-            สอบถามแพ็กเกจ ราคา เวลาทำการ หรือนัดเข้ามาดูยิม ได้ทุกช่องทาง
-          </p>
+    <section id="contact" className="scroll-mt-20 border-t border-white/[0.08] py-20 text-center md:py-28">
+      <Container>
+        <h2 className="text-lg font-light text-text-lo md:text-xl">อยากเริ่ม ทักมาคุยกันก่อนได้</h2>
+
+        <a
+          href={site.phoneHref}
+          aria-label={`โทร ${site.phoneDisplay}`}
+          className="mt-1 inline-block font-heading text-[clamp(3.5rem,16.5vw,11.9rem)] leading-[0.95] tracking-[0.02em] text-volt transition hover:brightness-110"
+        >
+          {site.phoneDisplay}
+        </a>
+
+        <div className="mt-7 flex flex-wrap justify-center gap-3.5">
+          <CtaLink href={site.lineHref} external>
+            แอดไลน์ {site.lineId}
+          </CtaLink>
+          {site.facebookHref ? (
+            <CtaLink href={site.facebookHref} variant="secondary" external>
+              Facebook {site.facebookName}
+            </CtaLink>
+          ) : (
+            <span className="inline-flex items-center rounded-[3px] border border-white/25 px-6 py-3.5 text-base font-semibold text-white md:px-7 md:py-[15px] md:text-[17px]">
+              Facebook {site.facebookName}
+            </span>
+          )}
         </div>
 
-        <ul className="divide-y divide-volt-ink/25 border-y border-volt-ink/25">
-          <li>
-            <a href={site.lineHref} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              <span>
-                <span className={labelClass}>LINE</span>
-                <span className={valueClass}>{site.lineId}</span>
-              </span>
-              <Arrow />
-            </a>
-          </li>
-          <li>
-            <a href={site.phoneHref} className={linkClass}>
-              <span>
-                <span className={labelClass}>โทร</span>
-                <span className={valueClass}>{site.phoneDisplay}</span>
-              </span>
-              <Arrow />
-            </a>
-          </li>
-          <li>
-            {site.facebookHref ? (
-              <a href={site.facebookHref} target="_blank" rel="noopener noreferrer" className={linkClass}>
-                <span>
-                  <span className={labelClass}>Facebook</span>
-                  <span className={valueClass}>{site.facebookName}</span>
-                </span>
-                <Arrow />
-              </a>
-            ) : (
-              <div className={rowClass}>
-                <span>
-                  <span className={labelClass}>Facebook</span>
-                  <span className={valueClass}>{site.facebookName}</span>
-                </span>
+        {(site.address || site.hours) && (
+          <dl className="mx-auto mt-12 grid max-w-3xl gap-8 border-t border-white/[0.08] pt-10 text-left sm:grid-cols-2">
+            {site.address && (
+              <div>
+                <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">ADDRESS</dt>
+                <dd className="mt-2 text-lg leading-snug text-text-hi">
+                  {site.address}
+                  {site.mapHref && (
+                    <a
+                      href={site.mapHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block text-base text-text-lo underline underline-offset-4 hover:text-text-hi"
+                    >
+                      เปิดแผนที่
+                    </a>
+                  )}
+                </dd>
               </div>
             )}
-          </li>
-          {site.address && (
-            <li className={rowClass}>
-              <span>
-                <span className={labelClass}>ที่อยู่</span>
-                <span className="mt-1 block text-lg leading-snug">{site.address}</span>
-                {site.mapHref && (
-                  <a
-                    href={site.mapHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block underline underline-offset-4 focus-visible:outline-volt-ink"
-                  >
-                    เปิดแผนที่
-                  </a>
-                )}
-              </span>
-            </li>
-          )}
-          {site.hours && (
-            <li className={rowClass}>
-              <span>
-                <span className={labelClass}>เวลาเปิด–ปิด</span>
-                <span className="mt-1 block text-lg leading-snug">{site.hours}</span>
-              </span>
-            </li>
-          )}
-        </ul>
+            {site.hours && (
+              <div>
+                <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">HOURS</dt>
+                <dd className="mt-2 text-lg leading-snug text-text-hi">{site.hours}</dd>
+              </div>
+            )}
+          </dl>
+        )}
       </Container>
     </section>
   );

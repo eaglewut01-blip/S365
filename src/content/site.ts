@@ -25,18 +25,22 @@ export const navLinks = [
 export const zones = [
   {
     title: "แมชชีน",
+    label: "MACHINE",
     text: "เครื่องเวทแบบสแต็ก และแบบใส่แผ่น ฝึกเจาะทีละส่วน",
   },
   {
     title: "ฟรีเวท",
+    label: "FREE WEIGHT",
     text: "ดัมเบลล์ บาร์เบลล์ EZ bar และแร็กยกน้ำหนัก",
   },
   {
     title: "ฟังก์ชันนัล",
+    label: "FUNCTIONAL",
     text: "ลู่หญ้าเทียม สเลด เคตเทิลเบลล์ แซนด์แบ็ก และแบตเทิลโรป",
   },
   {
     title: "คาร์ดิโอ",
+    label: "CARDIO",
     text: "SkiErg เครื่องกรรเชียงบก จักรยาน และลู่วิ่ง",
   },
 ];
