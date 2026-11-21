@@ -37,7 +37,7 @@ export function OwnerSidebar({ branchName, isOwner }: { branchName: string; isOw
   const items = isOwner ? [...baseItems, ...ownerOnlyItems] : baseItems;
 
   return (
-    <div className="flex w-56 flex-shrink-0 flex-col border-r border-border bg-panel px-3 py-5">
+    <div className="flex w-56 flex-shrink-0 flex-col border-r border-border bg-panel px-3 py-5 print:hidden">
       <div className="px-2.5 pb-4">
         <div className="font-heading text-[22px] leading-none tracking-wide text-text-hi">S365</div>
         <div className="mt-0.5 font-body text-[9px] font-semibold tracking-[0.25em] text-volt">

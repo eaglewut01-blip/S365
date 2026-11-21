@@ -16,6 +16,8 @@ export async function SubPage({
   intro,
   back,
   healthNote,
+  sections,
+  noContactBand,
   children,
 }: {
   locale: Locale;
@@ -28,7 +30,11 @@ export async function SubPage({
   back?: boolean;
   /** Show the general health disclaimer under the content. */
   healthNote?: boolean;
-  children: React.ReactNode | ((content: SiteContent) => React.ReactNode);
+  /** Full-width sections rendered under the page header (they bring their own container). */
+  sections?: (content: SiteContent) => React.ReactNode;
+  /** Leave out the contact band, for pages that already end with contact details. */
+  noContactBand?: boolean;
+  children?: React.ReactNode | ((content: SiteContent) => React.ReactNode);
 }) {
   const content = await getSiteContent(locale);
   const { ui, contact } = content;
@@ -37,7 +43,7 @@ export async function SubPage({
     <div id="top" lang={ui.htmlLang} className={`${kanit.variable} font-thai`}>
       <SiteNav content={content} path={path} />
       <main className="pt-[76px] md:pt-[88px]">
-        <Container className="pb-16 pt-10 md:pb-24 md:pt-16">
+        <Container className={sections ? "pb-10 pt-10 md:pb-14 md:pt-16" : "pb-16 pt-10 md:pb-24 md:pt-16"}>
           {back && (
             <a href={localizedPath(locale, "/tools")} className="text-sm text-text-lo transition hover:text-volt">
               ← {ui.backToTools}
@@ -47,7 +53,7 @@ export async function SubPage({
           <h1 className="mt-1 text-[clamp(2.1rem,7vw,3.75rem)] font-bold leading-[1.2] text-balance text-text-hi">{title}</h1>
           {intro && <p className="mt-3 max-w-2xl text-[1.05rem] font-light leading-relaxed text-pretty text-text-lo">{intro}</p>}
 
-          <div className="mt-9 md:mt-12">{typeof children === "function" ? children(content) : children}</div>
+          {children && <div className="mt-9 md:mt-12">{typeof children === "function" ? children(content) : children}</div>}
 
           {healthNote && (
             <p className="mt-10 max-w-3xl border-l-2 border-white/15 pl-4 text-sm font-light leading-relaxed text-text-lo">
@@ -55,7 +61,9 @@ export async function SubPage({
             </p>
           )}
         </Container>
+        {sections?.(content)}
 
+        {!noContactBand && (
         <section className="border-t border-white/[0.08] bg-[#111112] py-14 md:py-20">
           <Container className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
@@ -72,6 +80,7 @@ export async function SubPage({
             </div>
           </Container>
         </section>
+        )}
       </main>
       <SiteFooter content={content} />
       <MobileCtaBar content={content} />

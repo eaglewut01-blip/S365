@@ -28,7 +28,6 @@ export const tools: { id: string; path: string; tag: string; title: Text; desc: 
   },
   {
     id: "crowd",
-    ready: false,
     path: "/tools/crowd",
     tag: "LIVE",
     title: { th: "ตอนนี้คนเยอะไหม", en: "How busy is it now" },
@@ -50,7 +49,6 @@ export const tools: { id: string; path: string; tag: string; title: Text; desc: 
   },
   {
     id: "machines",
-    ready: false,
     path: "/machines",
     tag: "HOW TO",
     title: { th: "วิธีเล่นแต่ละเครื่อง", en: "How to use each machine" },

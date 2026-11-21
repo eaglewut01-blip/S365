@@ -1,13 +1,17 @@
 import type { SiteContent } from "@/lib/site-content";
 import { Container, SectionHeader } from "./primitives";
 import { SiteImage } from "./SiteImage";
+import { localizedPath } from "./SiteNav";
 
 export function Trainers({ content }: { content: SiteContent }) {
   const trainers = content.photos.trainers;
   return (
     <section id="trainers" className="scroll-mt-20 py-16 md:py-24">
       <Container>
-        <SectionHeader eyebrow="TRAINERS" title={content.t["trainers.title"]}>
+        <SectionHeader
+          eyebrow="TRAINERS"
+          more={{ href: localizedPath(content.locale, "/trainers"), label: content.ui.seeMore }}
+          title={content.t["trainers.title"]}>
           {content.t["trainers.desc"].replaceAll("{count}", String(trainers.length))}
         </SectionHeader>
 

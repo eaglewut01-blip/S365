@@ -17,10 +17,13 @@ export function Wordmark({ className }: { className?: string }) {
 export function SectionHeader({
   eyebrow,
   title,
+  more,
   children,
 }: {
   eyebrow: string;
   title: string;
+  /** Link to the page that explains this section in full. */
+  more?: { href: string; label: string };
   children?: React.ReactNode;
 }) {
   return (
@@ -31,8 +34,15 @@ export function SectionHeader({
           {title}
         </h2>
       </div>
-      {children && (
-        <p className="max-w-[440px] font-light leading-relaxed text-pretty text-text-lo md:text-right">{children}</p>
+      {(children || more) && (
+        <div className="max-w-[440px] md:text-right">
+          {children && <p className="font-light leading-relaxed text-pretty text-text-lo">{children}</p>}
+          {more && (
+            <a href={more.href} className="mt-2 inline-block font-medium text-volt underline-offset-4 hover:underline">
+              {more.label} →
+            </a>
+          )}
+        </div>
       )}
     </div>
   );

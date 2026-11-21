@@ -8,7 +8,6 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/Button";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { createClient } from "@/lib/supabase/client";
 import {
   addSitePhoto,
   deleteSitePhoto,
@@ -17,10 +16,12 @@ import {
   saveSiteTexts,
   updateSitePhoto,
 } from "@/lib/actions/website";
+import { collectionIds, collections, type CollectionId } from "@/content/collections";
+import { CollectionEditor, type AdminItem } from "./CollectionEditor";
+import { uploadImage } from "./media";
 import {
   englishDefault,
   photoSections,
-  SITE_MEDIA_BUCKET,
   storageKey,
   textFields,
   textGroups,
@@ -34,6 +35,7 @@ export interface AdminPhoto {
   section: PhotoSection;
   url: string;
   title: string;
+  caption: string;
   width: number;
   height: number;
   isVisible: boolean;
@@ -46,50 +48,27 @@ const builtInText = (locale: Locale, field: TextField) => (locale === "en" ? eng
 const fieldClasses =
   "w-full rounded-lg border border-border bg-panel-raised px-3 py-2 font-body text-[13.5px] text-text-hi outline-none placeholder:text-text-faint";
 
-// Phone cameras produce 5 to 15 MB files. Shrink in the browser before
-// uploading so the site stays fast and uploads work on slow connections.
-async function shrinkImage(file: File, maxEdge: number) {
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  } catch {
-    throw new Error(`เปิดไฟล์ ${file.name} ไม่ได้ ใช้ไฟล์ JPG หรือ PNG (ไฟล์ HEIC จาก iPhone ให้แปลงเป็น JPG ก่อน)`);
-  }
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("เบราว์เซอร์นี้ย่อภาพไม่ได้");
-  context.fillStyle = "#0a0a0b";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-  if (!blob) throw new Error(`แปลงไฟล์ ${file.name} ไม่สำเร็จ`);
-  return { blob, width, height };
-}
-
 export function WebsiteClient({
   overrides,
   photos,
+  items,
+  mediaBase,
   setupNeeded,
 }: {
   overrides: Record<string, string>;
   photos: AdminPhoto[];
+  items: AdminItem[];
+  /** Public URL prefix of the storage bucket. */
+  mediaBase: string;
   setupNeeded: boolean;
 }) {
-  const [tab, setTab] = useState<"texts" | "photos">("texts");
+  const [tab, setTab] = useState<"texts" | "photos" | CollectionId>("texts");
 
   return (
     <div className="px-7 py-6">
       <PageHeader
         title="เว็บไซต์"
-        subtitle="แก้ข้อความ (ไทยและอังกฤษ) และภาพบนหน้าเว็บสาธารณะ บันทึกแล้วหน้าเว็บจะเปลี่ยนทันที"
+        subtitle="แก้ข้อความ ภาพ คลิป วิธีเล่นเครื่อง บทความ และสินค้าบนหน้าเว็บ บันทึกแล้วหน้าเว็บจะเปลี่ยนทันที"
         action={
           <a
             href="/"
@@ -111,11 +90,12 @@ export function WebsiteClient({
         </Card>
       )}
 
-      <div className="mb-4 flex gap-1.5">
+      <div className="mb-4 flex flex-wrap gap-1.5">
         {(
           [
             ["texts", "ข้อความ"],
             ["photos", "ภาพ"],
+            ...collectionIds.map((id) => [id, collections[id].tab] as const),
           ] as const
         ).map(([id, label]) => (
           <button
@@ -132,7 +112,19 @@ export function WebsiteClient({
         ))}
       </div>
 
-      {tab === "texts" ? <TextsTab overrides={overrides} disabled={setupNeeded} /> : <PhotosTab photos={photos} disabled={setupNeeded} />}
+      {tab === "texts" ? (
+        <TextsTab overrides={overrides} disabled={setupNeeded} />
+      ) : tab === "photos" ? (
+        <PhotosTab photos={photos} disabled={setupNeeded} />
+      ) : (
+        <CollectionEditor
+          key={tab}
+          def={collections[tab]}
+          items={items.filter((item) => item.collection === tab)}
+          mediaBase={mediaBase}
+          disabled={setupNeeded}
+        />
+      )}
     </div>
   );
 }
@@ -320,18 +312,11 @@ function PhotoSectionCard({
 
   const upload = async (files: FileList) => {
     setNotice(null);
-    const supabase = createClient();
     let uploaded = 0;
     try {
       for (const [index, file] of Array.from(files).entries()) {
         setProgress(`กำลังอัปโหลด ${index + 1} จาก ${files.length}`);
-        const { blob, width, height } = await shrinkImage(file, section.id === "hero" ? 2400 : 1600);
-        const storagePath = `${section.id}/${crypto.randomUUID()}.jpg`;
-        const { error } = await supabase.storage
-          .from(SITE_MEDIA_BUCKET)
-          .upload(storagePath, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
-        if (error) throw new Error(error.message);
-
+        const { path: storagePath, width, height } = await uploadImage(section.id, file, section.id === "hero" ? 2400 : 1600);
         const result = await addSitePhoto({ section: section.id, storagePath, width, height });
         if ("error" in result) throw new Error(result.error);
         uploaded += 1;
@@ -417,6 +402,18 @@ function PhotoSectionCard({
                     onBlur={(event) => {
                       const title = event.target.value.trim();
                       if (title !== photo.title) run(() => updateSitePhoto(photo.id, { title }));
+                    }}
+                  />
+                )}
+                {section.captionLabel && (
+                  <Input
+                    aria-label={section.captionLabel}
+                    placeholder={section.captionLabel}
+                    defaultValue={photo.caption}
+                    disabled={busy}
+                    onBlur={(event) => {
+                      const caption = event.target.value.trim();
+                      if (caption !== photo.caption) run(() => updateSitePhoto(photo.id, { caption }));
                     }}
                   />
                 )}

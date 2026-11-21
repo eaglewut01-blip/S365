@@ -2,7 +2,17 @@ import { cache } from "react";
 import type { StaticImageData } from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { communityHighlights, results as defaultResults, trainers as defaultTrainers, wall, zonePhotos } from "@/content/media";
+import {
+  classPhotos,
+  communityHighlights,
+  eventPhotos,
+  gymPhotos,
+  results as defaultResults,
+  trainers as defaultTrainers,
+  wall,
+  zonePhotos,
+} from "@/content/media";
+import { getItems } from "./site-items";
 import {
   defaultTexts,
   englishDefault,
@@ -23,6 +33,8 @@ export interface SitePhoto {
   height?: number;
   alt: string;
   title?: string;
+  /** Short line under the title, e.g. a trainer's specialties. */
+  caption?: string;
   /** CSS object-position for cropped tiles, when the subject is off-centre. */
   position?: string;
 }
@@ -53,7 +65,13 @@ export interface SiteContent {
     zones: SitePhoto[];
     results: SitePhoto[];
     community: SitePhoto[];
+    /** Every community photo, for the community page. */
+    communityAll: SitePhoto[];
+    /** More photos of the gym floor, for the gym page. */
+    gymGallery: SitePhoto[];
   };
+  /** Which optional parts of the site have something to show (decides the header links). */
+  has: { videos: boolean; articles: boolean; shop: boolean };
 }
 
 interface TextRow {
@@ -65,6 +83,7 @@ interface PhotoRow {
   section: PhotoSection;
   storage_path: string;
   title: string | null;
+  caption?: string | null;
   alt: string | null;
   width: number;
   height: number;
@@ -97,7 +116,8 @@ async function loadOverrides(): Promise<{ texts: TextRow[]; photos: PhotoRow[] }
       supabase.from("site_texts").select("key, value").abortSignal(AbortSignal.timeout(5000)),
       supabase
         .from("site_photos")
-        .select("section, storage_path, title, alt, width, height")
+        // All columns, so the page keeps working whether or not the newer optional columns exist yet.
+        .select("*")
         .eq("is_visible", true)
         .order("sort_order")
         .order("created_at")
@@ -116,6 +136,7 @@ function toSitePhoto(row: PhotoRow, fallbackAlt: string): SitePhoto {
     height: row.height,
     alt: row.alt?.trim() || fallbackAlt,
     title: row.title?.trim() || undefined,
+    caption: row.caption?.trim() || undefined,
   };
 }
 
@@ -163,6 +184,11 @@ export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteC
   const facebookUrl = t["contact.facebook_url"].trim();
   const lat = Number.parseFloat(t["location.lat"]);
   const lng = Number.parseFloat(t["location.lng"]);
+
+  const [videoItems, articleItems, productItems] = await Promise.all([getItems("videos"), getItems("articles"), getItems("products")]);
+  const communityFallback = [...communityHighlights, ...classPhotos, ...eventPhotos].filter(
+    (photo, i, all) => all.findIndex((other) => other.src === photo.src) === i
+  );
 
   const localized = (photos: SitePhoto[], describe: (photo: SitePhoto, index: number) => string) =>
     locale === "en" ? withEnglishAlt(photos, describe) : photos;
@@ -212,6 +238,20 @@ export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteC
         pick("community", communityHighlights, () => "สมาชิกและเทรนเนอร์ของ S365 Fitness"),
         () => "S365 Fitness members and trainers"
       ),
+      communityAll: localized(
+        pick("community", communityFallback, () => "สมาชิกและเทรนเนอร์ของ S365 Fitness"),
+        () => "S365 Fitness members and trainers"
+      ),
+      // Skip the built-in photos that already illustrate a zone.
+      gymGallery: localized(
+        gymPhotos.filter((photo) => !zonePhotoList.some((zone) => zone.src === photo.src)),
+        () => "Inside S365 Fitness"
+      ),
+    },
+    has: {
+      videos: videoItems.length > 0,
+      articles: articleItems.some((item) => locale === "th" || (typeof item.data.title_en === "string" && item.data.title_en.trim() !== "")),
+      shop: productItems.length > 0,
     },
   };
 });

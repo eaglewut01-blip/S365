@@ -1,6 +1,7 @@
 import type { SiteContent } from "@/lib/site-content";
 import { Container, SectionHeader } from "./primitives";
 import { SiteImage } from "./SiteImage";
+import { localizedPath } from "./SiteNav";
 
 export function Community({ content }: { content: SiteContent }) {
   const featured = content.photos.community.slice(0, 3);
@@ -9,7 +10,10 @@ export function Community({ content }: { content: SiteContent }) {
   return (
     <section id="community" className="scroll-mt-20 bg-[#111112] py-16 md:py-24">
       <Container>
-        <SectionHeader eyebrow="COMMUNITY" title={content.t["community.title"]}>
+        <SectionHeader
+          eyebrow="COMMUNITY"
+          more={{ href: localizedPath(content.locale, "/community"), label: content.ui.seeMore }}
+          title={content.t["community.title"]}>
           {content.t["community.desc"]}
         </SectionHeader>
 

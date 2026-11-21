@@ -1,12 +1,16 @@
 import type { SiteContent } from "@/lib/site-content";
 import { Container, SectionHeader } from "./primitives";
 import { SiteImage } from "./SiteImage";
+import { localizedPath } from "./SiteNav";
 
 export function Results({ content }: { content: SiteContent }) {
   return (
     <section id="results" className="scroll-mt-20 py-16 md:py-24">
       <Container>
-        <SectionHeader eyebrow="RESULTS" title={content.t["results.title"]}>
+        <SectionHeader
+          eyebrow="RESULTS"
+          more={{ href: localizedPath(content.locale, "/results"), label: content.ui.seeMore }}
+          title={content.t["results.title"]}>
           {content.t["results.desc"]}
         </SectionHeader>
       </Container>

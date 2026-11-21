@@ -115,13 +115,14 @@ export async function addSitePhoto(input: {
 
 export async function updateSitePhoto(
   id: string,
-  patch: { title?: string; is_visible?: boolean }
+  patch: { title?: string; caption?: string; is_visible?: boolean }
 ): Promise<ActionResult> {
   await requireRole("owner");
   const supabase = await createClient();
 
-  const update: { title?: string | null; is_visible?: boolean } = {};
+  const update: { title?: string | null; caption?: string | null; is_visible?: boolean } = {};
   if (patch.title !== undefined) update.title = patch.title.trim() || null;
+  if (patch.caption !== undefined) update.caption = patch.caption.trim() || null;
   if (patch.is_visible !== undefined) update.is_visible = patch.is_visible;
 
   const { error } = await supabase.from("site_photos").update(update).eq("id", id);

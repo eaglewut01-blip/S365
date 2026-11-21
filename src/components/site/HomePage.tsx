@@ -11,6 +11,7 @@ import { Community } from "./Community";
 import { ToolsTeaser } from "./ToolsTeaser";
 import { Location } from "./Location";
 import { Contact } from "./Contact";
+import { ArticlesSection, VideosSection } from "./pages/ContentPages";
 import { SiteFooter } from "./SiteFooter";
 import { MobileCtaBar } from "./MobileCtaBar";
 
@@ -27,8 +28,10 @@ export async function HomePage({ locale }: { locale: Locale }) {
         <Trainers content={content} />
         <Gym content={content} />
         <Results content={content} />
+        <VideosSection content={content} />
         <Community content={content} />
         <ToolsTeaser content={content} />
+        <ArticlesSection content={content} />
         <Location content={content} />
         <Contact content={content} />
       </main>

@@ -253,10 +253,15 @@ export const photoSections: {
   help: string;
   /** Label for the per-photo text field, when the section shows one. */
   titleLabel?: string;
+  /** Label for a second per-photo text field (shown on the section's own page). */
+  captionLabel?: string;
   max?: number;
 }[] = [
   { id: "hero", title: "ภาพหน้าแรก", help: "ใช้ภาพแรกในรายการ ควรเป็นภาพแนวนอน กว้างอย่างน้อย 2000 พิกเซล", max: 1 },
-  { id: "trainers", title: "ภาพเทรนเนอร์", help: "ภาพแนวตั้ง 1 คนต่อ 1 ภาพ ใส่ชื่อเทรนเนอร์ในช่องชื่อ", titleLabel: "ชื่อเทรนเนอร์" },
+  { id: "trainers", title: "ภาพเทรนเนอร์", help: "ภาพแนวตั้ง 1 คนต่อ 1 ภาพ ใส่ชื่อเทรนเนอร์ในช่องชื่อ ส่วนความถนัดจะแสดงในหน้าเทรนเนอร์",
+    titleLabel: "ชื่อเทรนเนอร์",
+    captionLabel: "ความถนัด เช่น ลดไขมัน เพิ่มกล้ามเนื้อ",
+  },
   { id: "zones", title: "ภาพโซนในยิม", help: "เรียงตามลำดับโซนที่ 1 ถึง 4 ใช้ 4 ภาพแรก", max: 4 },
   { id: "results", title: "ภาพผลลัพธ์ของสมาชิก", help: "โปสเตอร์ก่อนและหลัง ควรได้รับอนุญาตจากสมาชิกก่อนเผยแพร่" },
   { id: "community", title: "ภาพคอมมูนิตี้", help: "ภาพแรกแสดงใหญ่ที่สุด ภาพที่ 2 และ 3 เป็นภาพแนวตั้ง ภาพถัดไปแสดงเป็นแถวเล็กด้านล่าง" },
