@@ -109,6 +109,27 @@ export const textFields = [
     default: "SkiErg เครื่องกรรเชียงบก จักรยาน และลู่วิ่ง",
     en: "SkiErg, rowing machines, bikes and treadmills.",
   },
+  { key: "classes.title", group: "gym", label: "หัวข้อส่วนคลาส", default: "คลาสที่มีให้เล่น", en: "Classes" },
+  {
+    key: "classes.items",
+    group: "gym",
+    label: "รายชื่อคลาส",
+    default:
+      "Yoga\nPower Flow Yoga\nFunctional Training\nCircuit Training\nMax Cardio\nMuscle Pump\nHyrox S365\nBoxing S365\nAero Boxing\nCore AB\nZumba\nDance Variety\n90 Dance",
+    help: "บรรทัดละ 1 คลาส ใช้ร่วมกันทั้งสองภาษา ลบทั้งหมดแล้วบันทึกเพื่อซ่อนส่วนคลาส",
+    multiline: true,
+    shared: true,
+    allowEmpty: true,
+  },
+  {
+    key: "classes.note",
+    group: "gym",
+    label: "ข้อความใต้รายชื่อคลาส",
+    default: "ตารางคลาสมีการอัปเดต ดูตารางล่าสุดได้ที่เพจ Facebook หรือทักไลน์ถามเรา",
+    en: "The class timetable is updated from time to time. See the latest on our Facebook page or message us on LINE.",
+    multiline: true,
+    allowEmpty: true,
+  },
 
   { key: "results.title", group: "results", label: "หัวข้อ", default: "ผลลัพธ์ของสมาชิก", en: "Member results" },
   {

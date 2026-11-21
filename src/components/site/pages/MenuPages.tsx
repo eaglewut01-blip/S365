@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SITE_NAME } from "@/content/site";
 import type { Locale, TextKey } from "@/content/site-texts";
 import { getSiteContent, type SitePhoto } from "@/lib/site-content";
+import { Classes } from "../Classes";
 import { Contact } from "../Contact";
 import { Location } from "../Location";
 import { SiteImage } from "../SiteImage";
@@ -74,6 +75,8 @@ export async function GymPage({ locale }: { locale: Locale }) {
           </li>
         ))}
       </ul>
+
+      <Classes content={content} />
 
       {content.photos.gymGallery.length > 0 && (
         <>

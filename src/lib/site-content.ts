@@ -58,6 +58,7 @@ export interface SiteContent {
   hours: { days: string; time: string }[];
   geo: { lat: number; lng: number };
   tickerItems: string[];
+  classes: { title: string; items: string[]; note: string };
   zones: { title: string; label: string; text: string }[];
   photos: {
     hero: SitePhoto;
@@ -223,6 +224,14 @@ export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteC
       .split("\n")
       .map((item) => item.trim())
       .filter(Boolean),
+    classes: {
+      title: t["classes.title"],
+      items: t["classes.items"]
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean),
+      note: t["classes.note"],
+    },
     zones: zoneTitles.map((title, i) => ({ title, label: ZONE_LABELS[i], text: zoneTexts[i] })),
     photos: {
       hero: localized(pick("hero", [wall], () => "ภาพบรรยากาศภายในยิม S365 Fitness", 1), () =>

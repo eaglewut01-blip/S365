@@ -1,5 +1,6 @@
 import type { SiteContent } from "@/lib/site-content";
 import { Container, SectionHeader } from "./primitives";
+import { Classes } from "./Classes";
 import { SiteImage } from "./SiteImage";
 import { localizedPath } from "./SiteNav";
 
@@ -35,6 +36,8 @@ export function Gym({ content }: { content: SiteContent }) {
             </li>
           ))}
         </ul>
+
+        <Classes content={content} />
       </Container>
     </section>
   );
