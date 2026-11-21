@@ -11,6 +11,7 @@ import { Location } from "@/components/site/Location";
 import { Contact } from "@/components/site/Contact";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { MobileCtaBar } from "@/components/site/MobileCtaBar";
+import { getSiteContent } from "@/lib/site-content";
 
 const kanit = Kanit({
   variable: "--font-kanit",
@@ -33,22 +34,28 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+// The page is prerendered and refreshed in the background: at most every
+// 5 minutes, and immediately after the owner saves a change in /owner/website.
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const content = await getSiteContent();
+
   return (
     <div id="top" className={`${kanit.variable} font-thai`}>
-      <SiteNav />
+      <SiteNav content={content} />
       <main>
-        <Hero />
-        <Ticker />
-        <Trainers />
-        <Gym />
-        <Results />
-        <Community />
-        <Location />
-        <Contact />
+        <Hero content={content} />
+        <Ticker items={content.tickerItems} />
+        <Trainers content={content} />
+        <Gym content={content} />
+        <Results content={content} />
+        <Community content={content} />
+        <Location content={content} />
+        <Contact content={content} />
       </main>
       <SiteFooter />
-      <MobileCtaBar />
+      <MobileCtaBar content={content} />
     </div>
   );
 }

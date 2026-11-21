@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { site } from "@/content/site";
+import { SITE_NAME } from "@/content/site";
 import { Container, Wordmark } from "./primitives";
 
 export function SiteFooter() {
@@ -9,7 +9,7 @@ export function SiteFooter() {
         <Wordmark className="text-[13px]" />
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-text-faint">
           <span>
-            © {new Date().getFullYear()} {site.name}
+            © {new Date().getFullYear()} {SITE_NAME}
           </span>
           <Link href="/login" className="text-text-lo transition hover:text-text-hi">
             เข้าสู่ระบบสมาชิกและทีมงาน

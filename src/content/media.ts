@@ -43,8 +43,6 @@ import result06 from "@/assets/site/results/result-06.jpg";
 import result07 from "@/assets/site/results/result-07.jpg";
 import result08 from "@/assets/site/results/result-08.jpg";
 
-import lineQrImage from "@/assets/site/contact/line-qr.png";
-
 export interface Photo {
   src: StaticImageData;
   alt: string;
@@ -116,12 +114,6 @@ export const eventPhotos: Photo[] = [
   { src: eventSlamball, alt: "นักกีฬาทีม S365 ยกสแลมบอลในสนามแข่ง DEKA FIT" },
   { src: eventJump, alt: "สมาชิกทีม S365 กระโดดฉลองหน้าป้ายเวลาเข้าเส้นชัย HYROX" },
 ];
-
-// QR for the LINE add-friend link in site.ts (lineHref). Regenerate it if that link changes.
-export const lineQr: Photo = {
-  src: lineQrImage,
-  alt: "คิวอาร์โค้ดสำหรับแอดไลน์ @s365fitness",
-};
 
 export const results: Photo[] = [
   { src: result01, alt: "ผลลัพธ์ก่อนและหลังของสมาชิก โปรแกรมโดย PT Jeeno ระยะเวลา 4 เดือน" },
