@@ -209,7 +209,99 @@ export const stretches: GuideItem[] = [
   },
 ];
 
-export const guideIntro: Record<"home" | "stretch", { rules: Record<Locale, string[]> }> = {
+// Dynamic moves for before training: keep moving, no long holds.
+export const warmups: GuideItem[] = [
+  {
+    id: "arm-circles",
+    name: { th: "หมุนวงแขน", en: "Arm circles" },
+    area: { th: "ไหล่ อก", en: "Shoulders, chest" },
+    dose: { th: "ทิศละ 10 ครั้ง", en: "10 in each direction" },
+    steps: {
+      th: ["ยืนตรง เท้ากว้างเท่าไหล่ ยกแขนทั้งสองข้างออกด้านข้างระดับไหล่", "หมุนแขนเป็นวงเล็กๆ ไปด้านหน้า", "ค่อยๆ ขยายวงให้ใหญ่ขึ้น", "หมุนกลับทิศทางเดิม"],
+      en: ["Stand tall, feet shoulder-width apart, arms out to the sides at shoulder height.", "Make small circles forward.", "Gradually make the circles bigger.", "Then reverse the direction."],
+    },
+    watch: { th: "ปล่อยไหล่ลง อย่ายกไหล่ขึ้นหาหู", en: "Keep your shoulders down. Do not shrug them up toward your ears." },
+  },
+  {
+    id: "torso-twist",
+    name: { th: "หมุนลำตัว", en: "Standing torso twist" },
+    area: { th: "ลำตัว หลังส่วนล่าง", en: "Torso, lower back" },
+    dose: { th: "ข้างละ 10 ครั้ง", en: "10 each side" },
+    steps: {
+      th: ["ยืนเท้ากว้างเท่าไหล่ งอเข่าเล็กน้อย งอศอกไว้ระดับอก", "หมุนลำตัวส่วนบนไปทางขวาช้าๆ สะโพกอยู่นิ่งหรือหมุนตามเล็กน้อย", "กลับมาตรงกลาง แล้วหมุนไปทางซ้าย", "ทำต่อเนื่องด้วยจังหวะสบายๆ"],
+      en: ["Stand with feet shoulder-width apart, knees slightly bent, elbows bent at chest height.", "Turn your upper body slowly to the right. Your hips stay mostly still.", "Come back to the centre, then turn to the left.", "Keep going at an easy rhythm."],
+    },
+    watch: { th: "หมุนจากลำตัว ไม่ใช่เหวี่ยงแขนแรงๆ", en: "Turn from your torso. Do not swing your arms hard." },
+  },
+  {
+    id: "cat-cow",
+    name: { th: "แมวกับวัว", en: "Cat-cow" },
+    area: { th: "กระดูกสันหลัง หลัง", en: "Spine, back" },
+    dose: { th: "8 ถึง 10 รอบ", en: "8 to 10 rounds" },
+    steps: {
+      th: ["ตั้งท่าคลาน มืออยู่ใต้ไหล่ เข่าอยู่ใต้สะโพก", "หายใจเข้า แอ่นหลังลงเบาๆ เงยหน้าเล็กน้อย", "หายใจออก ค่อมหลังขึ้น ก้มหน้าลง ดันพื้นออก", "สลับไปมาช้าๆ ตามลมหายใจ"],
+      en: ["Start on all fours, hands under shoulders, knees under hips.", "Breathe in, let your back dip gently and lift your head slightly.", "Breathe out, round your back up, tuck your chin and push the floor away.", "Move slowly between the two with your breath."],
+    },
+    watch: { th: "เคลื่อนไหวเท่าที่สบาย ไม่ต้องสุดช่วง", en: "Move only as far as is comfortable. You do not need full range." },
+  },
+  {
+    id: "leg-swings",
+    name: { th: "เหวี่ยงขาไปหน้าหลัง", en: "Front-to-back leg swings" },
+    area: { th: "ต้นขาด้านหลัง สะโพก", en: "Hamstrings, hips" },
+    dose: { th: "ข้างละ 10 ครั้ง", en: "10 each leg" },
+    steps: {
+      th: ["ยืนข้างผนังหรือจับเสาเพื่อทรงตัว", "เหวี่ยงขาข้างนอกไปด้านหน้าและด้านหลังเป็นจังหวะ", "ค่อยๆ เพิ่มความสูงของการเหวี่ยงทีละนิด", "ทำครบแล้วสลับขา"],
+      en: ["Stand beside a wall or pole for balance.", "Swing the outside leg forward and back in a steady rhythm.", "Gradually swing a little higher each time.", "Finish one leg, then switch."],
+    },
+    watch: { th: "ลำตัวตั้งตรง อย่าเอนตัวตามขา และไม่ต้องเหวี่ยงจนสุดแรง", en: "Keep your torso upright. Do not lean with the leg or swing with full force." },
+  },
+  {
+    id: "hip-circles",
+    name: { th: "หมุนสะโพก", en: "Hip circles" },
+    area: { th: "สะโพก", en: "Hips" },
+    dose: { th: "ข้างละ 8 รอบ ทั้งสองทิศทาง", en: "8 circles each leg, both directions" },
+    steps: {
+      th: ["ยืนขาเดียว มือจับผนังหรือเสาเพื่อทรงตัว", "ยกเข่าอีกข้างขึ้นระดับสะโพก", "หมุนเข่าเป็นวงกลมออกด้านนอกช้าๆ", "ทำครบแล้วหมุนกลับทิศ แล้วสลับข้าง"],
+      en: ["Stand on one leg, one hand on a wall or pole for balance.", "Lift the other knee to hip height.", "Slowly draw a circle with the knee, opening outward.", "Then reverse the direction, and switch legs."],
+    },
+    watch: { th: "ลำตัวนิ่ง หมุนจากสะโพก ไม่ใช่เอนตัวไปมา", en: "Keep your torso still. The movement comes from the hip, not from leaning." },
+  },
+  {
+    id: "walking-lunge-twist",
+    name: { th: "ก้าวลันจ์พร้อมบิดลำตัว", en: "Walking lunge with a twist" },
+    area: { th: "ต้นขา สะโพก ลำตัว", en: "Thighs, hips, torso" },
+    dose: { th: "ข้างละ 5 ครั้ง", en: "5 on each side" },
+    steps: {
+      th: ["ยืนตรง ก้าวขาขวาไปข้างหน้าแล้วย่อเข่าลงเป็นท่าลันจ์", "ประสานมือไว้หน้าอก แล้วบิดลำตัวไปทางขาที่อยู่ด้านหน้า", "บิดกลับมาตรง แล้วดันตัวขึ้นยืน", "ก้าวสลับข้าง ทำต่อเนื่อง"],
+      en: ["Stand tall, step your right leg forward and lower into a lunge.", "Hold your hands at your chest and twist toward the front leg.", "Twist back to centre and push up to stand.", "Step with the other leg and keep alternating."],
+    },
+    watch: { th: "ก้าวให้ยาวพอ เข่าหน้าไม่เลยปลายเท้ามากเกินไป", en: "Take a long enough step. Keep the front knee from travelling far past your toes." },
+  },
+  {
+    id: "bodyweight-squat",
+    name: { th: "สควอตน้ำหนักตัว", en: "Bodyweight squat" },
+    area: { th: "ต้นขา สะโพก", en: "Thighs, glutes" },
+    dose: { th: "10 ครั้ง ช้าและคุมท่า", en: "10 slow, controlled reps" },
+    steps: {
+      th: ["ยืนเท้ากว้างเท่าไหล่ ปลายเท้าเปิดออกเล็กน้อย", "ดันสะโพกไปด้านหลังแล้วย่อลง หลังตรง อกเปิด", "ย่อเท่าที่สบายโดยส้นเท้าไม่ลอย", "ออกแรงที่ส้นเท้า ดันตัวกลับขึ้นมา"],
+      en: ["Stand with feet shoulder-width apart, toes turned out slightly.", "Push your hips back and lower, back straight and chest open.", "Go as low as is comfortable with your heels down.", "Drive through your heels to stand back up."],
+    },
+    watch: { th: "ให้เข่าชี้ไปทางเดียวกับปลายเท้า อย่าให้หุบเข้าหากัน", en: "Keep your knees pointing the same way as your toes. Do not let them cave in." },
+  },
+  {
+    id: "high-knees",
+    name: { th: "เดินยกเข่าสูง", en: "High-knee march" },
+    area: { th: "ทั้งตัว หัวใจและปอด", en: "Whole body, heart and lungs" },
+    dose: { th: "30 ถึง 45 วินาที", en: "30 to 45 seconds" },
+    steps: {
+      th: ["ยืนตรง เริ่มเดินอยู่กับที่", "ยกเข่าให้สูงขึ้นทีละน้อย แกว่งแขนสลับขา", "เพิ่มจังหวะให้เร็วขึ้นเล็กน้อยเมื่อรู้สึกอุ่น", "ค่อยๆ ลดจังหวะลงเมื่อครบเวลา"],
+      en: ["Stand tall and start marching in place.", "Lift your knees a little higher each time, swinging opposite arms.", "Pick up the pace slightly once you feel warm.", "Slow down gradually when the time is up."],
+    },
+    watch: { th: "หายใจต่อเนื่อง ยังพูดเป็นประโยคได้ ถ้าหอบมากให้ลดจังหวะ", en: "Keep breathing steadily and stay able to speak in sentences. Slow down if you are gasping." },
+  },
+];
+
+export const guideIntro: Record<"home" | "stretch" | "warmup", { rules: Record<Locale, string[]> }> = {
   home: {
     rules: {
       th: ["อบอุ่นร่างกาย 5 นาทีก่อนเริ่ม เช่น เดินอยู่กับที่หรือแกว่งแขน", "เลือก 5 ถึง 6 ท่า ทำ 2 ถึง 3 วันต่อสัปดาห์ เว้นวันพักระหว่างวันฝึก", "พักระหว่างเซต 45 ถึง 60 วินาที", "ทำช้าๆ คุมท่าให้ถูกก่อนเพิ่มจำนวนครั้ง"],
@@ -220,6 +312,12 @@ export const guideIntro: Record<"home" | "stretch", { rules: Record<Locale, stri
     rules: {
       th: ["ยืดหลังออกกำลังกาย ตอนที่กล้ามเนื้อยังอุ่นอยู่", "ยืดจนรู้สึกตึง ไม่ใช่เจ็บ แล้วค้างนิ่งๆ ไม่โยกหรือกระตุก", "หายใจช้าและลึกตลอดการยืด", "ทำครบทั้งสองข้างทุกท่า"],
       en: ["Stretch after training, while your muscles are still warm.", "Go until you feel tension, not pain, and hold still. Do not bounce.", "Breathe slowly and deeply throughout.", "Do both sides for every stretch."],
+    },
+  },
+  warmup: {
+    rules: {
+      th: ["ใช้เวลาประมาณ 5 ถึง 8 นาที ทำก่อนยกเวทหรือก่อนคาร์ดิโอ", "ก่อนออกกำลังกายให้เคลื่อนไหวต่อเนื่อง ไม่ต้องค้างยืดนาน การค้างยืดเก็บไว้ทำหลังออกกำลังกาย", "เริ่มช้าและเริ่มจากช่วงเล็กๆ แล้วค่อยเพิ่มช่วงการเคลื่อนไหวทีละนิด", "ทำให้รู้สึกอุ่นและคล่องตัว ไม่ใช่เหนื่อย และหยุดทันทีถ้าเจ็บแปลบ"],
+      en: ["Takes about 5 to 8 minutes. Do it before lifting or cardio.", "Before training, keep moving. Long static holds are better saved for after your workout.", "Start slow and small, then widen the range a little at a time.", "You should feel warm and loose, not tired. Stop straight away if you feel sharp pain."],
     },
   },
 };

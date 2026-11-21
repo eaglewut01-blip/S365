@@ -18,6 +18,13 @@ try {
 
 const nextConfig: NextConfig = {
   images: { remotePatterns },
+  // The meal planner page was taken down; send old links to the tools list.
+  async redirects() {
+    return [
+      { source: "/tools/meal-plan", destination: "/tools", permanent: false },
+      { source: "/en/tools/meal-plan", destination: "/en/tools", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

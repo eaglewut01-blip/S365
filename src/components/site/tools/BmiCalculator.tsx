@@ -44,7 +44,6 @@ const copy = {
       high: "ถ้าอยากปรับน้ำหนักและสร้างกล้ามเนื้อ เริ่มจาก",
     },
     workout: "แผนออกกำลังกาย",
-    meal: "แผนการกิน",
     inbodyTitle: "อยากรู้ว่าเป็นกล้ามเนื้อหรือไขมัน",
     inbodyText: "ครั้งแรกมาเล่นฟรี และวัดองค์ประกอบร่างกายด้วยเครื่อง InBody ฟรี",
     inbodyCta: "ทักไลน์ถามเรื่องมาวัด",
@@ -77,7 +76,6 @@ const copy = {
       high: "To adjust your weight and build muscle, start with",
     },
     workout: "the workout plan",
-    meal: "the meal plan",
     inbodyTitle: "Want to know if it is muscle or fat?",
     inbodyText: "Your first visit is free to train, and the InBody body composition scan is free too.",
     inbodyCta: "Ask us on LINE about a scan",
@@ -161,11 +159,6 @@ export function BmiCalculator({ locale, lineId, lineHref }: { locale: Locale; li
                       <a href={toolPath(locale, "/tools/workout-plan")} className="rounded-[3px] border border-white/20 px-4 py-2.5 text-[15px] font-medium text-text-hi transition hover:border-volt hover:text-volt">
                         {c.workout}
                       </a>
-                      {group !== "normal" && (
-                        <a href={toolPath(locale, "/tools/meal-plan")} className="rounded-[3px] border border-white/20 px-4 py-2.5 text-[15px] font-medium text-text-hi transition hover:border-volt hover:text-volt">
-                          {c.meal}
-                        </a>
-                      )}
                     </div>
                   </div>
                 </>

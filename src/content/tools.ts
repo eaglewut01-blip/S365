@@ -20,11 +20,11 @@ export const tools: { id: string; path: string; tag: string; title: Text; desc: 
     desc: { th: "เลือกเป้าหมายและจำนวนวัน รับตารางฝึกรายสัปดาห์", en: "Pick a goal and how many days you train to get a weekly plan." },
   },
   {
-    id: "meal",
-    path: "/tools/meal-plan",
-    tag: "FOOD",
-    title: { th: "วางแผนการกิน", en: "Meal planner" },
-    desc: { th: "คำนวณพลังงานและโปรตีนต่อวัน พร้อมตัวอย่างเมนู", en: "Daily calories and protein, with example meals." },
+    id: "warmup",
+    path: "/guides/pre-workout-stretching",
+    tag: "WARM UP",
+    title: { th: "ท่ายืดก่อนออกกำลังกาย", en: "Pre-workout warm-up" },
+    desc: { th: "ท่าเคลื่อนไหวอุ่นร่างกาย 5 ถึง 8 นาทีก่อนเริ่มซ้อม", en: "Moving warm-up for 5 to 8 minutes before you train." },
   },
   {
     id: "crowd",
@@ -87,13 +87,13 @@ export const toolPages = {
       en: "Choose your goal, training days and where you train to get a weekly plan you can start today.",
     },
   },
-  meal: {
-    path: "/tools/meal-plan",
-    eyebrow: "MEAL PLAN",
-    title: { th: "วางแผนการกิน", en: "Meal planner" },
+  warmup: {
+    path: "/guides/pre-workout-stretching",
+    eyebrow: "WARM UP",
+    title: { th: "ท่ายืดก่อนออกกำลังกาย", en: "Pre-workout warm-up" },
     intro: {
-      th: "คำนวณพลังงาน โปรตีน คาร์โบไฮเดรต และไขมันต่อวันตามเป้าหมาย พร้อมตัวอย่างเมนู",
-      en: "Work out daily energy, protein, carbohydrate and fat for your goal, with example meals.",
+      th: "8 ท่าเคลื่อนไหวสำหรับอุ่นร่างกายก่อนซ้อม ใช้เวลาประมาณ 5 ถึง 8 นาที",
+      en: "Eight moving exercises to warm up before you train, about 5 to 8 minutes.",
     },
   },
   home: {

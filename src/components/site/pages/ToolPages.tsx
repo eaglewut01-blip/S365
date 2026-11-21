@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { guideIntro, homeExercises, stretches } from "@/content/guides";
+import { guideIntro, homeExercises, stretches, warmups } from "@/content/guides";
 import { SITE_NAME } from "@/content/site";
 import type { SiteContent } from "@/lib/site-content";
 import type { Locale } from "@/content/site-texts";
@@ -8,7 +8,6 @@ import { localizedPath } from "../SiteNav";
 import { SubPage } from "../SubPage";
 import { BmiCalculator } from "../tools/BmiCalculator";
 import { GuideList } from "../tools/GuideList";
-import { MealPlanner } from "../tools/MealPlanner";
 import { WorkoutPlanner } from "../tools/WorkoutPlanner";
 
 // Title, description and language alternates for a tool or guide page.
@@ -107,18 +106,18 @@ export function WorkoutPlanPage({ locale }: { locale: Locale }) {
   );
 }
 
-export function MealPlanPage({ locale }: { locale: Locale }) {
-  return (
-    <Frame locale={locale} id="meal">
-      <MealPlanner locale={locale} />
-    </Frame>
-  );
-}
-
 export function HomeWorkoutPage({ locale }: { locale: Locale }) {
   return (
     <Frame locale={locale} id="home">
       <GuideList locale={locale} rules={guideIntro.home.rules[locale]} items={homeExercises} />
+    </Frame>
+  );
+}
+
+export function WarmupPage({ locale }: { locale: Locale }) {
+  return (
+    <Frame locale={locale} id="warmup">
+      <GuideList locale={locale} rules={guideIntro.warmup.rules[locale]} items={warmups} />
     </Frame>
   );
 }
