@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { guideIntro, homeExercises, stretches } from "@/content/guides";
 import { SITE_NAME } from "@/content/site";
+import type { SiteContent } from "@/lib/site-content";
 import type { Locale } from "@/content/site-texts";
 import { comingSoon, toolPages, tools, type ToolPageId } from "@/content/tools";
 import { localizedPath } from "../SiteNav";
@@ -23,7 +24,15 @@ export function toolMetadata(locale: Locale, id: ToolPageId): Metadata {
   };
 }
 
-function Frame({ locale, id, children }: { locale: Locale; id: ToolPageId; children: React.ReactNode }) {
+function Frame({
+  locale,
+  id,
+  children,
+}: {
+  locale: Locale;
+  id: ToolPageId;
+  children: React.ReactNode | ((content: SiteContent) => React.ReactNode);
+}) {
   const page = toolPages[id];
   return (
     <SubPage
@@ -85,7 +94,7 @@ export function ToolsHubPage({ locale }: { locale: Locale }) {
 export function BmiPage({ locale }: { locale: Locale }) {
   return (
     <Frame locale={locale} id="bmi">
-      <BmiCalculator locale={locale} />
+      {(content) => <BmiCalculator locale={locale} lineId={content.contact.lineId} lineHref={content.contact.lineHref} />}
     </Frame>
   );
 }
