@@ -34,7 +34,8 @@ export const textFields = [
     key: "hero.sub",
     group: "hero",
     label: "คำโปรยใต้พาดหัว",
-    default: "ยิมที่มีทั้งเครื่องเวท ฟรีเวท และโซนฟังก์ชันนัล พร้อมเทรนเนอร์ส่วนตัวที่วางโปรแกรมให้ตามเป้าหมายของคุณ",
+    default:
+      "ยิมพื้นที่กว่า 1,000 ตารางเมตร ย่านบางนา เดินจาก BTS แบริ่งหรือ BTS บางนา 5 นาที มีเครื่องเวท ฟรีเวท โซนฟังก์ชันนัล และเทรนเนอร์ส่วนตัวที่วางโปรแกรมให้คุณ",
     multiline: true,
   },
   {
@@ -57,7 +58,13 @@ export const textFields = [
   },
 
   { key: "gym.title", group: "gym", label: "หัวข้อ", default: "พื้นที่ฝึกครบในที่เดียว" },
-  { key: "gym.desc", group: "gym", label: "คำอธิบาย", default: "จัดวางเป็นโซนชัดเจน เลือกฝึกได้ตามโปรแกรมของคุณ", multiline: true },
+  {
+    key: "gym.desc",
+    group: "gym",
+    label: "คำอธิบาย",
+    default: "พื้นที่กว่า 1,000 ตารางเมตร จัดวางเป็นโซนชัดเจน เลือกฝึกได้ตามโปรแกรมของคุณ",
+    multiline: true,
+  },
   { key: "zone1.title", group: "gym", label: "โซนที่ 1 ชื่อ", default: "แมชชีน" },
   { key: "zone1.text", group: "gym", label: "โซนที่ 1 คำอธิบาย", default: "เครื่องเวทแบบสแต็ก และแบบใส่แผ่น ฝึกเจาะทีละส่วน" },
   { key: "zone2.title", group: "gym", label: "โซนที่ 2 ชื่อ", default: "ฟรีเวท" },
@@ -92,6 +99,13 @@ export const textFields = [
     label: "ที่อยู่",
     default: "ซอยสุขุมวิท 70/3 แขวงบางนาใต้ เขตบางนา กรุงเทพมหานคร 10260",
     multiline: true,
+  },
+  {
+    key: "location.transit",
+    group: "location",
+    label: "การเดินทาง",
+    default: "เดินจาก BTS แบริ่ง หรือ BTS บางนา 5 นาที",
+    allowEmpty: true,
   },
   { key: "location.hours1_days", group: "location", label: "เวลาเปิด แถวที่ 1: วัน", default: "จันทร์ ถึง ศุกร์" },
   { key: "location.hours1_time", group: "location", label: "เวลาเปิด แถวที่ 1: เวลา", default: "06:00 – 23:00 น." },

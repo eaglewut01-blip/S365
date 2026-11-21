@@ -20,6 +20,12 @@ export function Location({ content }: { content: SiteContent }) {
                   {t["location.address"]}
                 </dd>
               </div>
+              {t["location.transit"] && (
+                <div>
+                  <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">GETTING HERE</dt>
+                  <dd className="mt-2 text-lg leading-relaxed text-pretty text-text-hi">{t["location.transit"]}</dd>
+                </div>
+              )}
               {content.hours.length > 0 && (
                 <div>
                   <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">OPEN</dt>
