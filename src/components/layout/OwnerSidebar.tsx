@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   UserCog,
   Dumbbell,
+  Globe,
 } from "lucide-react";
 import { LogoutButton } from "./LogoutButton";
 
@@ -26,11 +27,14 @@ const baseItems = [
   { href: "/owner/reports", label: "รายงาน", icon: BarChart3 },
 ];
 
-const ownerOnlyItem = { href: "/owner/team", label: "ทีมงาน", icon: UserCog };
+const ownerOnlyItems = [
+  { href: "/owner/website", label: "เว็บไซต์", icon: Globe },
+  { href: "/owner/team", label: "ทีมงาน", icon: UserCog },
+];
 
 export function OwnerSidebar({ branchName, isOwner }: { branchName: string; isOwner: boolean }) {
   const pathname = usePathname();
-  const items = isOwner ? [...baseItems, ownerOnlyItem] : baseItems;
+  const items = isOwner ? [...baseItems, ...ownerOnlyItems] : baseItems;
 
   return (
     <div className="flex w-56 flex-shrink-0 flex-col border-r border-border bg-panel px-3 py-5">
