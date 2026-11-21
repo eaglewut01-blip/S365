@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { Locale } from "@/content/site-texts";
+import { CtaLink } from "../primitives";
 import { Choice, Panel } from "./form";
 
 type Goal = "fat" | "muscle" | "general";
@@ -108,6 +109,24 @@ const copy = {
     },
     restDay: "พักอย่างน้อย 1 วันระหว่างการฝึกกล้ามเนื้อกลุ่มเดียวกัน และหยุดทันทีถ้าเจ็บแปลบหรือเวียนหัว",
     stretch: "จบด้วยการยืดเหยียด 5 นาที",
+    limits: "มีอาการบาดเจ็บหรือข้อจำกัดไหม",
+    limitsOptions: { no: "ไม่มี", yes: "มี" },
+    limitsTitle: "ควรคุยกับเทรนเนอร์ก่อนเริ่ม",
+    limitsText:
+      "ถ้ามีอาการบาดเจ็บ ปวดข้อ ปวดหลัง ตั้งครรภ์ หรือมีโรคประจำตัว ตารางสำเร็จรูปอาจไม่เหมาะกับคุณ ทักมาบอกอาการให้เทรนเนอร์ช่วยดูก่อน แล้วค่อยเริ่มฝึก",
+    limitsCta: "ทักไลน์คุยกับเทรนเนอร์",
+    shareTitle: "เก็บตารางนี้ไว้",
+    shareText: "ลิงก์นี้จำตัวเลือกของคุณไว้ เปิดแล้วได้ตารางเดิม",
+    copyLink: "คัดลอกลิงก์ตารางนี้",
+    copied: "คัดลอกแล้ว",
+    copyFailed: "คัดลอกไม่ได้ ให้คัดลอกจากแถบที่อยู่ของเบราว์เซอร์",
+    lineShare: "ส่งตารางนี้ทาง LINE",
+    trainerTitle: "อยากให้เทรนเนอร์ต่อยอดตารางนี้",
+    trainerText: "ครั้งแรกมาเล่นฟรี และวัดองค์ประกอบร่างกายด้วยเครื่อง InBody ฟรี",
+    trainerCta: "ทักไลน์คุยกับเทรนเนอร์",
+    lineMessage: (goal: string, days: number, level: string, place: string) =>
+      `สนใจมาเล่นฟรีครั้งแรก และอยากให้เทรนเนอร์ช่วยต่อยอดโปรแกรม เป้าหมาย: ${goal} ฝึก ${days} วันต่อสัปดาห์ ประสบการณ์: ${level} ฝึกที่: ${place}`,
+    limitsMessage: "ผมมีอาการบาดเจ็บหรือข้อจำกัดทางร่างกาย อยากให้เทรนเนอร์ช่วยดูก่อนเริ่มโปรแกรม",
   },
   en: {
     goal: "Goal",
@@ -134,6 +153,24 @@ const copy = {
     },
     restDay: "Leave at least one day between sessions for the same muscle group. Stop straight away if you feel sharp pain or dizziness.",
     stretch: "Finish with 5 minutes of stretching.",
+    limits: "Any injury or physical limitation?",
+    limitsOptions: { no: "None", yes: "Yes" },
+    limitsTitle: "Talk to a trainer before you start",
+    limitsText:
+      "If you have an injury, joint or back pain, are pregnant, or have a medical condition, a ready-made plan may not suit you. Message us so a trainer can look at it first, then start training.",
+    limitsCta: "Message a trainer on LINE",
+    shareTitle: "Keep this plan",
+    shareText: "This link remembers your choices. Open it later to get the same plan.",
+    copyLink: "Copy link to this plan",
+    copied: "Copied",
+    copyFailed: "Could not copy. Copy it from the browser address bar.",
+    lineShare: "Send this plan on LINE",
+    trainerTitle: "Want a trainer to build on this plan?",
+    trainerText: "Your first visit is free to train, and the InBody body composition scan is free too.",
+    trainerCta: "Message a trainer on LINE",
+    lineMessage: (goal: string, days: number, level: string, place: string) =>
+      `I'm interested in the free first visit and would like a trainer to build on my plan. Goal: ${goal}. Days per week: ${days}. Experience: ${level}. Where: ${place}`,
+    limitsMessage: "I have an injury or physical limitation and would like a trainer to look at it before I start a program.",
   },
 };
 
@@ -144,15 +181,83 @@ function prescription(goal: Goal, level: Level) {
   return { sets: 2 + extra, reps: "8–10", hold: "30–45", rest: "90" };
 }
 
-export function WorkoutPlanner({ locale }: { locale: Locale }) {
+// LINE official accounts (ids starting with @) can open a chat with the text already typed in.
+function chatLink(lineId: string, lineHref: string, message: string) {
+  return lineId.startsWith("@") ? `https://line.me/R/oaMessage/${lineId}/?${encodeURIComponent(message)}` : lineHref;
+}
+
+// The visitor's choices live in the page address, so a shared link opens the same plan.
+// Reading them with useSyncExternalStore keeps the server render on the defaults.
+const listeners = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  listeners.add(callback);
+  window.addEventListener("popstate", callback);
+  return () => {
+    listeners.delete(callback);
+    window.removeEventListener("popstate", callback);
+  };
+}
+
+const getSearch = () => window.location.search;
+const getServerSearch = () => "";
+
+interface Choices {
+  goal: Goal;
+  days: number;
+  level: Level;
+  place: Place;
+  limits: "no" | "yes";
+}
+
+function parseChoices(search: string): Choices {
+  const q = new URLSearchParams(search);
+  const goal = q.get("goal");
+  const level = q.get("level");
+  const place = q.get("place");
+  const days = Number(q.get("days"));
+  return {
+    goal: goal === "fat" || goal === "muscle" || goal === "general" ? goal : "general",
+    days: days in SPLITS ? days : 3,
+    level: level === "beginner" || level === "intermediate" ? level : "beginner",
+    place: place === "gym" || place === "home" ? place : "gym",
+    limits: q.get("limits") === "1" ? "yes" : "no",
+  };
+}
+
+function toQuery(choices: Choices) {
+  const q = new URLSearchParams({ goal: choices.goal, days: String(choices.days), level: choices.level, place: choices.place });
+  if (choices.limits === "yes") q.set("limits", "1");
+  return q.toString();
+}
+
+export function WorkoutPlanner({ locale, lineId, lineHref }: { locale: Locale; lineId: string; lineHref: string }) {
   const c = copy[locale];
-  const [goal, setGoal] = useState<Goal>("general");
-  const [days, setDays] = useState(3);
-  const [level, setLevel] = useState<Level>("beginner");
-  const [place, setPlace] = useState<Place>("gym");
+  const search = useSyncExternalStore(subscribe, getSearch, getServerSearch);
+  const choices = parseChoices(search);
+  const { goal, days, level, place, limits } = choices;
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+
+  function update(patch: Partial<Choices>) {
+    window.history.replaceState(null, "", `${window.location.pathname}?${toQuery({ ...choices, ...patch })}`);
+    listeners.forEach((callback) => callback());
+    setCopyState("idle");
+  }
+
+  const shareUrl = () => `${window.location.origin}${window.location.pathname}?${toQuery(choices)}`;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl());
+      setCopyState("done");
+    } catch {
+      setCopyState("failed");
+    }
+  }
 
   const split = SPLITS[days];
   const rx = prescription(goal, level);
+  const trainerMessage = c.lineMessage(c.goals[goal], days, c.levels[level], c.places[place]);
 
   return (
     <div className="grid gap-3.5 lg:grid-cols-[360px_1fr]">
@@ -160,30 +265,46 @@ export function WorkoutPlanner({ locale }: { locale: Locale }) {
         <Choice
           label={c.goal}
           value={goal}
-          onChange={setGoal}
+          onChange={(value) => update({ goal: value })}
           options={(["fat", "muscle", "general"] as const).map((value) => ({ value, label: c.goals[value] }))}
         />
         <Choice
           label={c.days}
           value={days}
-          onChange={setDays}
+          onChange={(value) => update({ days: value })}
           options={[2, 3, 4, 5].map((value) => ({ value, label: `${value} ${c.daysUnit}` }))}
         />
         <Choice
           label={c.level}
           value={level}
-          onChange={setLevel}
+          onChange={(value) => update({ level: value })}
           options={(["beginner", "intermediate"] as const).map((value) => ({ value, label: c.levels[value] }))}
         />
         <Choice
           label={c.place}
           value={place}
-          onChange={setPlace}
+          onChange={(value) => update({ place: value })}
           options={(["gym", "home"] as const).map((value) => ({ value, label: c.places[value] }))}
+        />
+        <Choice
+          label={c.limits}
+          value={limits}
+          onChange={(value) => update({ limits: value })}
+          options={(["no", "yes"] as const).map((value) => ({ value, label: c.limitsOptions[value] }))}
         />
       </Panel>
 
       <div aria-live="polite" className="space-y-3.5">
+        {limits === "yes" ? (
+          <Panel>
+            <h2 className="text-xl font-semibold text-text-hi">{c.limitsTitle}</h2>
+            <p className="mt-2 max-w-xl font-light leading-relaxed text-text-lo">{c.limitsText}</p>
+            <CtaLink href={chatLink(lineId, lineHref, c.limitsMessage)} external className="mt-4">
+              {c.limitsCta}
+            </CtaLink>
+          </Panel>
+        ) : (
+        <>
         <div className="grid gap-3.5 md:grid-cols-2">
           {split.sessions.map((id, i) => {
             const session = SESSIONS[place][id];
@@ -221,6 +342,39 @@ export function WorkoutPlanner({ locale }: { locale: Locale }) {
             <li>{c.stretch}</li>
           </ul>
         </Panel>
+
+        <div className="grid gap-3.5 md:grid-cols-2">
+          <Panel>
+            <h2 className="text-lg font-semibold text-text-hi">{c.shareTitle}</h2>
+            <p className="mt-1.5 font-light leading-relaxed text-text-lo">{c.shareText}</p>
+            <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={copyLink}
+                className="min-h-11 cursor-pointer rounded-[3px] border border-white/20 px-4 py-2 text-[15px] font-medium text-text-hi transition hover:border-volt hover:text-volt"
+              >
+                {copyState === "done" ? c.copied : c.copyLink}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open(`https://line.me/R/share?text=${encodeURIComponent(shareUrl())}`, "_blank", "noopener,noreferrer")}
+                className="min-h-11 cursor-pointer rounded-[3px] border border-white/20 px-4 py-2 text-[15px] font-medium text-text-hi transition hover:border-volt hover:text-volt"
+              >
+                {c.lineShare}
+              </button>
+            </div>
+            {copyState === "failed" && <p className="mt-2 text-sm text-text-lo">{c.copyFailed}</p>}
+          </Panel>
+          <Panel className="border border-volt/40">
+            <h2 className="text-lg font-semibold text-text-hi">{c.trainerTitle}</h2>
+            <p className="mt-1.5 font-light leading-relaxed text-text-lo">{c.trainerText}</p>
+            <CtaLink href={chatLink(lineId, lineHref, trainerMessage)} external className="mt-3.5">
+              {c.trainerCta}
+            </CtaLink>
+          </Panel>
+        </div>
+        </>
+        )}
       </div>
     </div>
   );

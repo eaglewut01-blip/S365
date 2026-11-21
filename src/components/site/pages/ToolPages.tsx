@@ -102,7 +102,7 @@ export function BmiPage({ locale }: { locale: Locale }) {
 export function WorkoutPlanPage({ locale }: { locale: Locale }) {
   return (
     <Frame locale={locale} id="workout">
-      <WorkoutPlanner locale={locale} />
+      {(content) => <WorkoutPlanner locale={locale} lineId={content.contact.lineId} lineHref={content.contact.lineHref} />}
     </Frame>
   );
 }
