@@ -21,7 +21,10 @@ export function Gym({ content }: { content: SiteContent }) {
               />
               <div aria-hidden className="tile-shade absolute inset-0 -z-10" />
               <div className="absolute inset-x-5 bottom-5">
-                <p className="font-heading text-[15px] tracking-[0.24em] text-volt">{zone.label}</p>
+                {/* The English label would only repeat the English zone name. */}
+                {content.locale === "th" && (
+                  <p className="font-heading text-[15px] tracking-[0.24em] text-volt">{zone.label}</p>
+                )}
                 <h3 className="text-[1.75rem] font-semibold leading-snug text-text-hi">{zone.title}</h3>
                 <p className="mt-1 text-[14.5px] font-light leading-relaxed text-balance text-[#cfcdc5]">{zone.text}</p>
               </div>

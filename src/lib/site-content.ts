@@ -3,7 +3,17 @@ import type { StaticImageData } from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import { communityHighlights, results as defaultResults, trainers as defaultTrainers, wall, zonePhotos } from "@/content/media";
-import { defaultTexts, SITE_MEDIA_BUCKET, textFields, type PhotoSection, type TextKey } from "@/content/site-texts";
+import {
+  defaultTexts,
+  englishDefault,
+  SITE_MEDIA_BUCKET,
+  storageKey,
+  textFields,
+  type Locale,
+  type PhotoSection,
+  type TextKey,
+} from "@/content/site-texts";
+import { uiStrings, type UiStrings } from "@/content/ui-strings";
 
 // A photo on the public site: either one built into the code (static import)
 // or one the owner uploaded to Supabase Storage (URL plus stored dimensions).
@@ -18,6 +28,10 @@ export interface SitePhoto {
 }
 
 export interface SiteContent {
+  locale: Locale;
+  /** Fixed interface wording for this language. */
+  ui: UiStrings;
+  /** Editable texts for this language. */
   t: Record<TextKey, string>;
   contact: {
     phoneDisplay: string;
@@ -105,14 +119,22 @@ function toSitePhoto(row: PhotoRow, fallbackAlt: string): SitePhoto {
   };
 }
 
-export const getSiteContent = cache(async (): Promise<SiteContent> => {
-  const overrides = await loadOverrides();
+// English alt text for the built-in photos, whose own descriptions are written in Thai.
+function withEnglishAlt(photos: SitePhoto[], describe: (photo: SitePhoto, index: number) => string): SitePhoto[] {
+  return photos.map((photo, i) => (typeof photo.src === "string" ? photo : { ...photo, alt: describe(photo, i) }));
+}
 
+export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteContent> => {
+  const overrides = await loadOverrides();
+  const saved = new Map(overrides.texts.map((row) => [row.key, row.value]));
+
+  // Start from the built-in text for this language, then apply what the owner
+  // saved. English falls back to the built-in English, never to edited Thai.
   const t = { ...defaultTexts };
-  for (const row of overrides.texts) {
-    if (!(row.key in defaultTexts)) continue;
-    if (row.value.trim() === "" && !allowEmptyKeys.has(row.key)) continue;
-    t[row.key as TextKey] = row.value;
+  for (const field of textFields) {
+    const value = saved.get(storageKey(locale, field.key));
+    if (value !== undefined && (value.trim() !== "" || allowEmptyKeys.has(field.key))) t[field.key] = value;
+    else if (locale === "en") t[field.key] = englishDefault(field);
   }
 
   const uploaded = (section: PhotoSection) => overrides.photos.filter((photo) => photo.section === section);
@@ -142,7 +164,12 @@ export const getSiteContent = cache(async (): Promise<SiteContent> => {
   const lat = Number.parseFloat(t["location.lat"]);
   const lng = Number.parseFloat(t["location.lng"]);
 
+  const localized = (photos: SitePhoto[], describe: (photo: SitePhoto, index: number) => string) =>
+    locale === "en" ? withEnglishAlt(photos, describe) : photos;
+
   return {
+    locale,
+    ui: uiStrings[locale],
     t,
     contact: {
       phoneDisplay,
@@ -172,11 +199,19 @@ export const getSiteContent = cache(async (): Promise<SiteContent> => {
       .filter(Boolean),
     zones: zoneTitles.map((title, i) => ({ title, label: ZONE_LABELS[i], text: zoneTexts[i] })),
     photos: {
-      hero: pick("hero", [wall], () => "ภาพบรรยากาศภายในยิม S365 Fitness", 1)[0],
-      trainers,
-      zones: zonePhotoList,
-      results: pick("results", defaultResults, () => "ผลลัพธ์ก่อนและหลังของสมาชิก S365 Fitness"),
-      community: pick("community", communityHighlights, () => "สมาชิกและเทรนเนอร์ของ S365 Fitness"),
+      hero: localized(pick("hero", [wall], () => "ภาพบรรยากาศภายในยิม S365 Fitness", 1), () =>
+        "Machine zone at S365 Fitness with the digit wall 0123465789, the 3, 6 and 5 in yellow"
+      )[0],
+      trainers: localized(trainers, (photo) => `Trainer ${photo.title ?? ""} at S365 Fitness`.replace(/\s+/g, " ")),
+      zones: localized(zonePhotoList, (_, i) => `${zoneTitles[i]} zone at S365 Fitness`),
+      results: localized(
+        pick("results", defaultResults, () => "ผลลัพธ์ก่อนและหลังของสมาชิก S365 Fitness"),
+        () => "Before and after result of an S365 Fitness member"
+      ),
+      community: localized(
+        pick("community", communityHighlights, () => "สมาชิกและเทรนเนอร์ของ S365 Fitness"),
+        () => "S365 Fitness members and trainers"
+      ),
     },
   };
 });

@@ -10,13 +10,13 @@ export function MobileCtaBar({ content }: { content: SiteContent }) {
         rel="noopener noreferrer"
         className="flex h-12 items-center justify-center rounded-[3px] bg-volt text-base font-semibold text-volt-ink"
       >
-        แอดไลน์
+        {content.ui.addLine}
       </a>
       <a
         href={content.contact.phoneHref}
         className="flex h-12 items-center justify-center rounded-[3px] border border-white/45 text-base font-semibold text-white"
       >
-        โทร {content.contact.phoneDisplay}
+        {content.ui.call} {content.contact.phoneDisplay}
       </a>
     </div>
   );

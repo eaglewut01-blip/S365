@@ -14,7 +14,7 @@ export function Results({ content }: { content: SiteContent }) {
       {/* Phones: swipe sideways so each poster stays readable. Desktop: 4-column grid. */}
       <ul
         tabIndex={0}
-        aria-label="ภาพผลลัพธ์ก่อนและหลังของสมาชิก"
+        aria-label={content.ui.resultsListLabel}
         className="mx-auto mt-9 flex max-w-[1240px] snap-x snap-mandatory scroll-pl-5 gap-2.5 overflow-x-auto px-5 pb-4 [scrollbar-color:var(--color-border-strong)_transparent] [scrollbar-width:thin] md:grid md:grid-cols-4 md:gap-3.5 md:overflow-visible md:px-8 md:pb-0"
       >
         {content.photos.results.map((result, i) => (
@@ -23,7 +23,7 @@ export function Results({ content }: { content: SiteContent }) {
               href={typeof result.src === "string" ? result.src : result.src.src}
               target="_blank"
               rel="noopener noreferrer"
-              title="เปิดภาพขนาดเต็ม"
+              title={content.ui.openFullImage}
               className="block transition hover:brightness-110"
             >
               <SiteImage

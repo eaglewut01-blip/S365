@@ -18,11 +18,15 @@ import {
   updateSitePhoto,
 } from "@/lib/actions/website";
 import {
+  englishDefault,
   photoSections,
   SITE_MEDIA_BUCKET,
+  storageKey,
   textFields,
   textGroups,
+  type Locale,
   type PhotoSection,
+  type TextField,
 } from "@/content/site-texts";
 
 export interface AdminPhoto {
@@ -36,6 +40,8 @@ export interface AdminPhoto {
 }
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
+
+const builtInText = (locale: Locale, field: TextField) => (locale === "en" ? englishDefault(field) : field.default);
 
 const fieldClasses =
   "w-full rounded-lg border border-border bg-panel-raised px-3 py-2 font-body text-[13.5px] text-text-hi outline-none placeholder:text-text-faint";
@@ -83,7 +89,7 @@ export function WebsiteClient({
     <div className="px-7 py-6">
       <PageHeader
         title="เว็บไซต์"
-        subtitle="แก้ข้อความและภาพบนหน้าเว็บสาธารณะ บันทึกแล้วหน้าเว็บจะเปลี่ยนทันที"
+        subtitle="แก้ข้อความ (ไทยและอังกฤษ) และภาพบนหน้าเว็บสาธารณะ บันทึกแล้วหน้าเว็บจะเปลี่ยนทันที"
         action={
           <a
             href="/"
@@ -133,25 +139,35 @@ export function WebsiteClient({
 
 function TextsTab({ overrides, disabled }: { overrides: Record<string, string>; disabled: boolean }) {
   const router = useRouter();
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(textFields.map((field) => [field.key, overrides[field.key] ?? field.default]))
-  );
+  const [locale, setLocale] = useState<Locale>("th");
+  // One set of form values per language, so switching tabs keeps unsaved edits.
+  const [values, setValues] = useState<Record<Locale, Record<string, string>>>(() => {
+    const initial = (language: Locale) =>
+      Object.fromEntries(
+        textFields.map((field) => [field.key, overrides[storageKey(language, field.key)] ?? builtInText(language, field)])
+      );
+    return { th: initial("th"), en: initial("en") };
+  });
   const [notice, setNotice] = useState<Notice>(null);
   const [pending, startTransition] = useTransition();
 
   const set = (key: string, value: string) => {
-    setValues((current) => ({ ...current, [key]: value }));
+    setValues((current) => ({ ...current, [locale]: { ...current[locale], [key]: value } }));
     setNotice(null);
   };
 
   const save = () => {
     const formData = new FormData();
-    for (const field of textFields) formData.set(field.key, values[field.key] ?? "");
+    formData.set("locale", locale);
+    for (const field of textFields) formData.set(field.key, values[locale][field.key] ?? "");
     startTransition(async () => {
       const result = await saveSiteTexts(formData);
       if ("error" in result) setNotice({ kind: "error", text: result.error });
       else {
-        setNotice({ kind: "ok", text: "บันทึกแล้ว หน้าเว็บอัปเดตเรียบร้อย" });
+        setNotice({
+          kind: "ok",
+          text: locale === "th" ? "บันทึกแล้ว หน้าเว็บภาษาไทยอัปเดตเรียบร้อย" : "บันทึกแล้ว หน้าเว็บภาษาอังกฤษอัปเดตเรียบร้อย",
+        });
         router.refresh();
       }
     });
@@ -159,27 +175,63 @@ function TextsTab({ overrides, disabled }: { overrides: Record<string, string>; 
 
   return (
     <div className="max-w-3xl space-y-4 pb-24">
-      {textGroups.map((group) => (
-        <Card key={group.id}>
-          <h2 className="mb-3.5 font-body text-[15px] font-semibold text-text-hi">{group.title}</h2>
-          <div className="space-y-4">
-            {textFields
-              .filter((field) => field.group === group.id)
-              .map((field) => {
-                const value = values[field.key] ?? "";
-                const edited = value !== field.default;
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="ภาษาที่กำลังแก้" className="flex rounded-lg border border-border p-1">
+          {(
+            [
+              ["th", "ภาษาไทย"],
+              ["en", "English"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setLocale(id);
+                setNotice(null);
+              }}
+              className={clsx(
+                "cursor-pointer rounded-md px-3.5 py-1.5 font-body text-[13px] font-semibold",
+                locale === id ? "bg-volt text-volt-ink" : "text-text-lo hover:text-text-hi"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="font-body text-[12.5px] text-text-faint">
+          {locale === "th"
+            ? "ข้อความของหน้าเว็บภาษาไทย"
+            : "ข้อความของหน้าเว็บภาษาอังกฤษ (/en) เบอร์โทร LINE ลิงก์ และตำแหน่งแผนที่ใช้ค่าเดียวกับภาษาไทย แก้ที่แท็บภาษาไทย"}
+        </p>
+      </div>
+
+      {textGroups.map((group) => {
+        const fields = textFields.filter(
+          (field) => field.group === group.id && !(locale === "en" && "shared" in field && field.shared)
+        );
+        if (fields.length === 0) return null;
+        return (
+          <Card key={group.id}>
+            <h2 className="mb-3.5 font-body text-[15px] font-semibold text-text-hi">{group.title}</h2>
+            <div className="space-y-4">
+              {fields.map((field) => {
+                const id = `${locale}-${field.key}`;
+                const builtIn = builtInText(locale, field);
+                const value = values[locale][field.key] ?? "";
+                const edited = value !== builtIn;
                 const multiline = "multiline" in field && field.multiline;
                 return (
-                  <div key={field.key}>
+                  <div key={id}>
                     <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <label htmlFor={field.key} className="font-body text-[13px] font-medium text-text-lo">
+                      <label htmlFor={id} className="font-body text-[13px] font-medium text-text-lo">
                         {field.label}
                         {edited && <span className="ml-2 text-[11.5px] font-semibold text-volt">แก้ไขแล้ว</span>}
                       </label>
                       {edited && (
                         <button
                           type="button"
-                          onClick={() => set(field.key, field.default)}
+                          onClick={() => set(field.key, builtIn)}
                           className="inline-flex cursor-pointer items-center gap-1 font-body text-[12px] text-text-faint hover:text-text-hi"
                         >
                           <RotateCcw size={12} /> คืนค่าเดิม
@@ -188,7 +240,7 @@ function TextsTab({ overrides, disabled }: { overrides: Record<string, string>; 
                     </div>
                     {multiline ? (
                       <textarea
-                        id={field.key}
+                        id={id}
                         rows={field.key === "ticker.items" ? 5 : 3}
                         value={value}
                         disabled={disabled}
@@ -196,12 +248,7 @@ function TextsTab({ overrides, disabled }: { overrides: Record<string, string>; 
                         className={clsx(fieldClasses, "resize-y leading-relaxed")}
                       />
                     ) : (
-                      <Input
-                        id={field.key}
-                        value={value}
-                        disabled={disabled}
-                        onChange={(event) => set(field.key, event.target.value)}
-                      />
+                      <Input id={id} value={value} disabled={disabled} onChange={(event) => set(field.key, event.target.value)} />
                     )}
                     {"help" in field && field.help && (
                       <p className="mt-1.5 font-body text-[12px] text-text-faint">{field.help}</p>
@@ -209,13 +256,14 @@ function TextsTab({ overrides, disabled }: { overrides: Record<string, string>; 
                   </div>
                 );
               })}
-          </div>
-        </Card>
-      ))}
+            </div>
+          </Card>
+        );
+      })}
 
       <div className="fixed bottom-0 left-56 right-0 flex items-center gap-4 border-t border-border bg-base/95 px-7 py-3.5 backdrop-blur">
         <Button variant="primary" onClick={save} disabled={pending || disabled} className="px-6 py-2.5">
-          {pending ? "กำลังบันทึก" : "บันทึกข้อความ"}
+          {pending ? "กำลังบันทึก" : locale === "th" ? "บันทึกข้อความภาษาไทย" : "บันทึกข้อความภาษาอังกฤษ"}
         </Button>
         {notice && (
           <p role="status" className={clsx("font-body text-[13.5px]", notice.kind === "ok" ? "text-mint" : "text-coral")}>

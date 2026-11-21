@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { SITE_NAME } from "@/content/site";
+import type { SiteContent } from "@/lib/site-content";
 import { Container, Wordmark } from "./primitives";
 
-export function SiteFooter() {
+export function SiteFooter({ content }: { content: SiteContent }) {
   return (
     <footer className="border-t border-white/[0.08] pb-28 pt-9 md:pb-9">
       <Container className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -12,7 +13,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} {SITE_NAME}
           </span>
           <Link href="/login" className="text-text-lo transition hover:text-text-hi">
-            เข้าสู่ระบบสมาชิกและทีมงาน
+            {content.ui.loginLong}
           </Link>
         </div>
       </Container>

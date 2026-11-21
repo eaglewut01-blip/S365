@@ -3,7 +3,7 @@ import { Container, CtaLink } from "./primitives";
 import { SiteImage } from "./SiteImage";
 
 export function Hero({ content }: { content: SiteContent }) {
-  const { t, contact } = content;
+  const { t, ui, contact } = content;
   return (
     <section className="relative isolate flex min-h-[700px] flex-col justify-end overflow-hidden md:h-[860px] md:max-h-[100svh] md:min-h-[660px]">
       <SiteImage
@@ -17,7 +17,13 @@ export function Hero({ content }: { content: SiteContent }) {
 
       <Container className="pb-10 md:pb-16">
         <p className="font-heading text-[17px] tracking-[0.3em] text-volt">{t["hero.eyebrow"]}</p>
-        <h1 className="mb-3.5 mt-1.5 text-[clamp(3.6rem,18vw,4.5rem)] font-bold leading-[1.12] text-text-hi md:text-[clamp(5rem,9.4vw,8.5rem)]">
+        <h1
+          className={
+            content.locale === "th"
+              ? "mb-3.5 mt-1.5 text-[clamp(3.6rem,18vw,4.5rem)] font-bold leading-[1.12] text-text-hi md:text-[clamp(5rem,9.4vw,8.5rem)]"
+              : "mb-4 mt-1.5 text-[clamp(3rem,14.5vw,4rem)] font-bold leading-[1.02] tracking-[-0.01em] text-text-hi md:text-[clamp(4.5rem,8.6vw,7.75rem)]"
+          }
+        >
           {t["hero.line1"]}
           {t["hero.line2"] && (
             <>
@@ -32,10 +38,10 @@ export function Hero({ content }: { content: SiteContent }) {
 
         <div className="mt-7 flex flex-wrap gap-3.5">
           <CtaLink href={contact.lineHref} external>
-            แอดไลน์ {contact.lineId}
+            {ui.addLine} {contact.lineId}
           </CtaLink>
           <CtaLink href={contact.phoneHref} variant="secondary">
-            โทร {contact.phoneDisplay}
+            {ui.call} {contact.phoneDisplay}
           </CtaLink>
         </div>
       </Container>

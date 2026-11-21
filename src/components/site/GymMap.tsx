@@ -14,11 +14,13 @@ export function GymMap({
   lng,
   label,
   fallbackHref,
+  strings,
 }: {
   lat: number;
   lng: number;
   label: string;
   fallbackHref: string;
+  strings: { label: string; loading: string; failed: string; fallbackLink: string };
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"idle" | "ready" | "failed">("idle");
@@ -131,18 +133,18 @@ export function GymMap({
   return (
     <div className="relative h-[380px] overflow-hidden rounded-[3px] bg-[#111112] lg:h-[520px]">
       {/* The map library forces position: relative on this element, so it is sized by height, not inset. */}
-      <div ref={container} role="region" aria-label="แผนที่ 3 มิติแสดงตำแหน่งยิม" className="h-full w-full" />
+      <div ref={container} role="region" aria-label={strings.label} className="h-full w-full" />
       {state !== "ready" && (
         <p className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center font-light text-text-lo">
           {state === "failed" ? (
             <span className="pointer-events-auto">
-              เปิดแผนที่ในหน้านี้ไม่ได้{" "}
+              {strings.failed}{" "}
               <a href={fallbackHref} target="_blank" rel="noopener noreferrer" className="text-volt underline underline-offset-4">
-                ดูบน Google Maps
+                {strings.fallbackLink}
               </a>
             </span>
           ) : (
-            "กำลังโหลดแผนที่"
+            strings.loading
           )}
         </p>
       )}

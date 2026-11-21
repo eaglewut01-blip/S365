@@ -5,7 +5,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
 import { communityHighlights, results, trainers, wall, zonePhotos } from "@/content/media";
-import { photoSections, SITE_MEDIA_BUCKET, textFields, type PhotoSection } from "@/content/site-texts";
+import {
+  englishDefault,
+  photoSections,
+  SITE_MEDIA_BUCKET,
+  storageKey,
+  textFields,
+  type Locale,
+  type PhotoSection,
+} from "@/content/site-texts";
 
 type ActionResult = { success: true } | { error: string };
 
@@ -13,9 +21,10 @@ const SECTION_IDS = new Set<string>(photoSections.map((section) => section.id));
 const URL_KEYS = new Set(["location.map_url", "location.directions_url", "contact.facebook_url"]);
 const NUMBER_KEYS = new Set(["location.lat", "location.lng"]);
 
-// The public home page is prerendered; refresh it (and this admin page) after every change.
+// The public pages (Thai and English) are prerendered; refresh them and this admin page after every change.
 function refresh() {
   revalidatePath("/");
+  revalidatePath("/en");
   revalidatePath("/owner/website");
 }
 
@@ -23,12 +32,18 @@ export async function saveSiteTexts(formData: FormData): Promise<ActionResult> {
   const owner = await requireRole("owner");
   const supabase = await createClient();
 
+  const locale: Locale = formData.get("locale") === "en" ? "en" : "th";
   const changed: { key: string; value: string; updated_at: string; updated_by: string }[] = [];
   const backToDefault: string[] = [];
 
   for (const field of textFields) {
     const raw = formData.get(field.key);
     if (raw === null) continue;
+    // Phone, links and map position have one value for both languages and are saved from the Thai tab only.
+    const shared = "shared" in field && field.shared === true;
+    if (locale === "en" && shared) continue;
+    const builtIn = locale === "en" ? englishDefault(field) : field.default;
+    const key = storageKey(locale, field.key);
     const value = String(raw).replace(/\r\n/g, "\n").trim();
     const allowEmpty = "allowEmpty" in field && field.allowEmpty === true;
 
@@ -40,8 +55,8 @@ export async function saveSiteTexts(formData: FormData): Promise<ActionResult> {
     }
 
     // A value equal to the built-in default is not stored, so later changes to the default still apply.
-    if (value === field.default || (value === "" && !allowEmpty)) backToDefault.push(field.key);
-    else changed.push({ key: field.key, value, updated_at: new Date().toISOString(), updated_by: owner.id });
+    if (value === builtIn || (value === "" && !allowEmpty)) backToDefault.push(key);
+    else changed.push({ key, value, updated_at: new Date().toISOString(), updated_by: owner.id });
   }
 
   if (changed.length > 0) {
