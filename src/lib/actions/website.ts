@@ -23,8 +23,8 @@ const NUMBER_KEYS = new Set(["location.lat", "location.lng"]);
 
 // The public pages (Thai and English) are prerendered; refresh them and this admin page after every change.
 function refresh() {
-  revalidatePath("/");
-  revalidatePath("/en");
+  // "layout" refreshes every public page, since they all show the contact details.
+  revalidatePath("/", "layout");
   revalidatePath("/owner/website");
 }
 

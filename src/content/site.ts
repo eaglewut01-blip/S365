@@ -3,4 +3,5 @@
 // interface wording in both languages lives in ui-strings.ts.
 export const SITE_NAME = "S365 Fitness";
 
-export const navAnchors = ["gym", "trainers", "results", "community", "location", "contact"] as const;
+// Sections of the home page linked from the header. (Community has no header link, to leave room for Clips and Tools.)
+export const navAnchors = ["gym", "trainers", "results", "location", "contact"] as const;

@@ -5,14 +5,14 @@ import { GymMap } from "./GymMap";
 export function Location({ content }: { content: SiteContent }) {
   const { t, ui } = content;
   return (
-    <section id="location" className="scroll-mt-20 py-16 md:py-24">
+    <section id="location" className="scroll-mt-20 bg-[#111112] py-16 md:py-24">
       <Container>
         <SectionHeader eyebrow="LOCATION" title={t["location.title"]}>
           {ui.mapHint}
         </SectionHeader>
 
         <div className="mt-9 grid gap-2.5 md:gap-3.5 lg:grid-cols-[380px_1fr]">
-          <div className="flex flex-col rounded-[3px] bg-[#111112] p-6 md:p-8">
+          <div className="flex flex-col rounded-[3px] bg-base p-6 md:p-8">
             <dl className="space-y-7">
               <div>
                 <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">{ui.address}</dt>

@@ -1,6 +1,6 @@
-import { Kanit } from "next/font/google";
 import type { Locale } from "@/content/site-texts";
 import { getSiteContent } from "@/lib/site-content";
+import { kanit } from "./fonts";
 import { SiteNav } from "./SiteNav";
 import { Hero } from "./Hero";
 import { Ticker } from "./Ticker";
@@ -8,17 +8,11 @@ import { Gym } from "./Gym";
 import { Trainers } from "./Trainers";
 import { Results } from "./Results";
 import { Community } from "./Community";
+import { ToolsTeaser } from "./ToolsTeaser";
 import { Location } from "./Location";
 import { Contact } from "./Contact";
 import { SiteFooter } from "./SiteFooter";
 import { MobileCtaBar } from "./MobileCtaBar";
-
-const kanit = Kanit({
-  variable: "--font-kanit",
-  subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 // The whole public page, shared by the Thai route (/) and the English route (/en).
 export async function HomePage({ locale }: { locale: Locale }) {
@@ -34,6 +28,7 @@ export async function HomePage({ locale }: { locale: Locale }) {
         <Gym content={content} />
         <Results content={content} />
         <Community content={content} />
+        <ToolsTeaser content={content} />
         <Location content={content} />
         <Contact content={content} />
       </main>
