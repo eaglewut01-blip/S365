@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { lineQr } from "@/content/media";
 import { site } from "@/content/site";
 import { Container, CtaLink } from "./primitives";
 
@@ -30,34 +32,17 @@ export function Contact() {
           )}
         </div>
 
-        {(site.address || site.hours) && (
-          <dl className="mx-auto mt-12 grid max-w-3xl gap-8 border-t border-white/[0.08] pt-10 text-left sm:grid-cols-2">
-            {site.address && (
-              <div>
-                <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">ADDRESS</dt>
-                <dd className="mt-2 text-lg leading-snug text-text-hi">
-                  {site.address}
-                  {site.mapHref && (
-                    <a
-                      href={site.mapHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 block text-base text-text-lo underline underline-offset-4 hover:text-text-hi"
-                    >
-                      เปิดแผนที่
-                    </a>
-                  )}
-                </dd>
-              </div>
-            )}
-            {site.hours && (
-              <div>
-                <dt className="font-heading text-[15px] tracking-[0.3em] text-volt">HOURS</dt>
-                <dd className="mt-2 text-lg leading-snug text-text-hi">{site.hours}</dd>
-              </div>
-            )}
-          </dl>
-        )}
+        <p className="mt-6 font-light text-text-lo">สอบถามแพ็กเกจและราคาได้ทางไลน์หรือโทร</p>
+
+        {/* Desktop visitors can't tap a LINE link on their phone, so give them something to scan. */}
+        <div className="mx-auto mt-10 hidden w-max items-center gap-5 rounded-[3px] border border-white/[0.12] p-4 pr-7 text-left md:flex">
+          <Image src={lineQr.src} alt={lineQr.alt} sizes="132px" className="size-[132px] rounded-[2px]" />
+          <p className="leading-relaxed text-text-lo">
+            <span className="block font-heading text-[15px] tracking-[0.3em] text-volt">LINE</span>
+            <span className="block text-xl font-semibold text-text-hi">{site.lineId}</span>
+            เปิดกล้องมือถือแล้วสแกนเพื่อแอดไลน์
+          </p>
+        </div>
       </Container>
     </section>
   );

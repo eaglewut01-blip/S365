@@ -7,8 +7,10 @@ import { Gym } from "@/components/site/Gym";
 import { Trainers } from "@/components/site/Trainers";
 import { Results } from "@/components/site/Results";
 import { Community } from "@/components/site/Community";
+import { Location } from "@/components/site/Location";
 import { Contact } from "@/components/site/Contact";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { MobileCtaBar } from "@/components/site/MobileCtaBar";
 
 const kanit = Kanit({
   variable: "--font-kanit",
@@ -42,9 +44,11 @@ export default function HomePage() {
         <Gym />
         <Results />
         <Community />
+        <Location />
         <Contact />
       </main>
       <SiteFooter />
+      <MobileCtaBar />
     </div>
   );
 }

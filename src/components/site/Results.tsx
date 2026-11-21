@@ -19,13 +19,21 @@ export function Results() {
       >
         {results.map((result) => (
           <li key={result.src.src} className="w-[78vw] max-w-[380px] shrink-0 snap-start overflow-hidden rounded-[3px] md:w-auto md:max-w-none">
-            <Image
-              src={result.src}
-              alt={result.alt}
-              placeholder="blur"
-              sizes="(min-width: 1280px) 290px, (min-width: 768px) 25vw, 78vw"
-              className="h-auto w-full"
-            />
+            <a
+              href={result.src.src}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="เปิดภาพขนาดเต็ม"
+              className="block transition hover:brightness-110"
+            >
+              <Image
+                src={result.src}
+                alt={result.alt}
+                placeholder="blur"
+                sizes="(min-width: 1280px) 290px, (min-width: 768px) 25vw, 78vw"
+                className="h-auto w-full"
+              />
+            </a>
           </li>
         ))}
       </ul>

@@ -139,3 +139,29 @@ a:focus-visible,
     animation: none;
   }
 }
+
+/* Marker on the 3D map (built in GymMap.tsx). */
+.gym-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.6));
+}
+
+.gym-pin b {
+  background: var(--color-volt);
+  color: #141414;
+  font: 400 22px/1 var(--font-bebas-neue), "Arial Narrow", sans-serif;
+  letter-spacing: 0.08em;
+  padding: 7px 11px 5px;
+  border-radius: 3px;
+}
+
+.gym-pin i {
+  width: 0;
+  height: 0;
+  margin-top: -1px;
+  border: 9px solid transparent;
+  border-top-color: var(--color-volt);
+  border-bottom-width: 0;
+}
