@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { startOfTodayBangkok } from "@/lib/dates";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import type { Member } from "@/types/database";
 import { CheckInClient, type AttemptRow, type CheckinRow } from "./CheckInClient";
 
@@ -12,7 +13,9 @@ export default async function CheckInPage() {
   const startOfDay = startOfTodayBangkok();
 
   const [{ data: members }, { data: checkins }, { data: attempts }] = await Promise.all([
-    supabase.from("members").select("*").eq("branch_id", branchId).eq("status", "active").order("name"),
+    fetchAll<Member>((from, to) =>
+      supabase.from("members").select("*").eq("branch_id", branchId).eq("status", "active").order("name").order("id").range(from, to)
+    ),
     supabase
       .from("checkins")
       .select("*, member:members(id, name, membership_expires_on)")

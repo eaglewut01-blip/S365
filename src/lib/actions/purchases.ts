@@ -39,6 +39,7 @@ export async function sellPackage(formData: FormData): Promise<Result> {
   const note = String(formData.get("note") || "").trim() || null;
 
   if (!memberId || !packageId) return { error: "เลือกแพ็กเกจก่อน" };
+  if (!soldBy) return { error: "เลือกผู้ขาย เพื่อใช้คิดค่าคอม" };
   if (!Number.isFinite(amount) || amount < 0) return { error: "ยอดชำระไม่ถูกต้อง" };
   if (!METHODS.includes(method)) return { error: "เลือกวิธีชำระ" };
   if (![purchasedOn, startsOn].every((d) => DATE.test(d)) || (endsOnInput && !DATE.test(endsOnInput))) {
@@ -49,6 +50,7 @@ export async function sellPackage(formData: FormData): Promise<Result> {
   if (!pkg) return { error: "ไม่พบแพ็กเกจนี้" };
 
   const isMembership = pkg.kind === "membership";
+  if (!isMembership && !String(formData.get("pt_trainer_id") || "")) return { error: "เลือกเทรนเนอร์ที่เทรนให้" };
   const endsOn = isMembership ? endsOnInput || membershipEnd(startsOn, pkg.months, pkg.bonus_months, pkg.bonus_days) : null;
   if (isMembership && endsOn! < startsOn) return { error: "วันหมดอายุต้องไม่ก่อนวันเริ่ม" };
 

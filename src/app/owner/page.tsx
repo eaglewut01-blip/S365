@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { daysAgo, todayDateLabelTh } from "@/lib/format";
 import { expiryLabel, expiryState, startOfTodayBangkok, todayBangkok } from "@/lib/dates";
 import { PT_LOW_HOURS, WORK_HOURS } from "@/lib/labels";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import type { Member } from "@/types/database";
 
 export default async function OverviewPage() {
@@ -18,7 +19,7 @@ export default async function OverviewPage() {
   const todayDow = new Date(`${todayBangkok()}T12:00:00Z`).getUTCDay();
 
   const [{ data: members }, { data: classes }, { count: checkinsToday }, { data: trainers }, { data: slotsToday }] = await Promise.all([
-    supabase.from("members").select("*").eq("branch_id", branchId ?? ""),
+    fetchAll<Member>((from, to) => supabase.from("members").select("*").eq("branch_id", branchId ?? "").order("id").range(from, to)),
     supabase
       .from("classes")
       .select("*, trainer:profiles(full_name), bookings:class_bookings(status)")

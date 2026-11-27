@@ -82,7 +82,7 @@ export async function SubPage({
         </section>
         )}
       </main>
-      <SiteFooter content={content} />
+      <SiteFooter />
       <MobileCtaBar content={content} />
     </div>
   );

@@ -35,7 +35,7 @@ export async function HomePage({ locale }: { locale: Locale }) {
         <Location content={content} />
         <Contact content={content} />
       </main>
-      <SiteFooter content={content} />
+      <SiteFooter />
       <MobileCtaBar content={content} />
     </div>
   );

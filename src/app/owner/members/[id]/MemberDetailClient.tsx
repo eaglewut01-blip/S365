@@ -61,7 +61,8 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
           }
         })
       }
-      className="rounded-xl border border-border bg-panel p-[18px]"
+      id="sell"
+      className="scroll-mt-4 rounded-xl border border-border bg-panel p-[18px]"
     >
       <h2 className="m-0 mb-3 font-heading text-[15px] text-text-hi">บันทึกการซื้อแพ็กเกจ</h2>
       <input type="hidden" name="member_id" value={member.id} />
@@ -130,9 +131,9 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
           </>
         )}
         {pkg?.kind === "pt" && (
-          <Field label="เทรนเนอร์ที่ดูแล">
-            <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""}>
-              <option value="">ยังไม่ระบุ</option>
+          <Field label="เทรนเนอร์ที่เทรนให้">
+            <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""} required>
+              <option value="">เลือกเทรนเนอร์</option>
               {team.filter((t) => t.role === "trainer").map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.full_name}
@@ -141,9 +142,9 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
             </Select>
           </Field>
         )}
-        <Field label="ผู้ขาย">
-          <Select name="sold_by" defaultValue={currentUserId}>
-            <option value="">ไม่ระบุ</option>
+        <Field label="ผู้ขาย (ใช้คิดค่าคอม)">
+          <Select name="sold_by" defaultValue={currentUserId} required>
+            <option value="">เลือกผู้ขาย</option>
             {team.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.full_name}
