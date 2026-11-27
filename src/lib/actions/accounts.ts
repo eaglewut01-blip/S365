@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
+import { requestOrigin } from "@/lib/request-origin";
 import type { Role } from "@/types/database";
 
 // Owner-only: create a login for a new staff member or trainer.
@@ -23,6 +24,8 @@ export async function createStaffAccount(formData: FormData) {
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { role, full_name: fullName, phone, branch_id: owner.branch_id },
+    // The invite email opens the page where they choose a password.
+    redirectTo: `${await requestOrigin()}/reset-password`,
   });
 
   if (error) return { error: error.message };
@@ -55,6 +58,7 @@ export async function inviteMemberAccount(memberId: string, email: string) {
       phone: member.phone,
       branch_id: member.branch_id ?? staffer.branch_id,
     },
+    redirectTo: `${await requestOrigin()}/reset-password`,
   });
 
   if (error || !data.user) return { error: error?.message ?? "ส่งคำเชิญไม่สำเร็จ" };

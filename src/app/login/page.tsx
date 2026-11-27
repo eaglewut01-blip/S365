@@ -14,7 +14,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-base p-6">
       <form
         action={formAction}
-        className="w-[360px] rounded-2xl border border-border bg-panel p-8"
+        className="w-full max-w-[360px] rounded-2xl border border-border bg-panel p-8"
       >
         <div className="mb-[18px] flex h-10 w-10 items-center justify-center rounded-[10px] bg-volt">
           <Dumbbell size={20} color="#241800" strokeWidth={2.4} />
@@ -49,7 +49,11 @@ export default function LoginPage() {
           {pending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </Button>
 
-        <Link href="/" className="mt-4 block text-center text-[12.5px] text-text-faint hover:text-text-lo">
+        <Link href="/forgot-password" className="mt-4 block text-center text-[12.5px] text-text-lo hover:text-text-hi">
+          ลืมรหัสผ่าน
+        </Link>
+
+        <Link href="/" className="mt-2.5 block text-center text-[12.5px] text-text-faint hover:text-text-lo">
           กลับหน้าเว็บไซต์
         </Link>
       </form>

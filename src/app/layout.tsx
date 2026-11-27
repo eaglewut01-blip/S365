@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
 import { siteUrl } from "@/lib/site-url";
+import { AuthLinkForwarder } from "@/components/AuthLinkForwarder";
 
 const bebasNeue = Bebas_Neue({
   variable: "--font-bebas-neue",
@@ -24,7 +25,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" data-scroll-behavior="smooth" className={`${bebasNeue.variable} ${inter.variable} h-full`}>
-      <body className="min-h-full bg-base font-body text-text-hi antialiased">{children}</body>
+      <body className="min-h-full bg-base font-body text-text-hi antialiased">
+        <AuthLinkForwarder />
+        {children}
+      </body>
     </html>
   );
 }
