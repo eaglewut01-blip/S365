@@ -180,7 +180,7 @@ export function PackagesClient({
 
   const groups: { kind: PackageKind; title: string }[] = [
     { kind: "membership", title: "แพ็กเกจสมาชิก" },
-    { kind: "pt", title: "แพ็กเกจ PT เทรนเนอร์" },
+    { kind: "pt", title: "แพ็กเกจ PT เทรนเนอร์ (ไม่จำเป็นต้องสร้าง การขาย PT กรอกชั่วโมงและราคาเองได้)" },
   ];
 
   return (

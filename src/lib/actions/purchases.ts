@@ -92,6 +92,63 @@ export async function sellPackage(formData: FormData): Promise<Result> {
   return { success: true };
 }
 
+// PT is sold by the hour with terms agreed each time (hours, free hours,
+// price), so it is typed in directly instead of picked from a package.
+export async function sellPt(formData: FormData): Promise<Result> {
+  const staffer = await requireRole("owner", "staff");
+  if (!staffer.branch_id) return { error: "บัญชีนี้ยังไม่ได้ผูกกับสาขา" };
+  const supabase = await createClient();
+
+  const memberId = String(formData.get("member_id") || "");
+  const hours = Math.floor(Number(formData.get("hours") || 0));
+  const bonus = Math.floor(Number(formData.get("bonus_hours") || 0));
+  const amount = Number(formData.get("amount") || 0);
+  const method = String(formData.get("payment_method") || "transfer") as PaymentMethod;
+  const soldBy = String(formData.get("sold_by") || "");
+  const trainerId = String(formData.get("pt_trainer_id") || "");
+  const purchasedOn = String(formData.get("purchased_on") || "") || todayBangkok();
+  const note = String(formData.get("note") || "").trim() || null;
+
+  if (!memberId) return { error: "ไม่พบสมาชิก" };
+  if (!Number.isFinite(hours) || hours < 1) return { error: "ใส่จำนวนชั่วโมงที่ซื้อ" };
+  if (!Number.isFinite(bonus) || bonus < 0) return { error: "ชั่วโมงแถมไม่ถูกต้อง" };
+  if (!Number.isFinite(amount) || amount < 0) return { error: "ยอดชำระไม่ถูกต้อง" };
+  if (!METHODS.includes(method)) return { error: "เลือกวิธีชำระ" };
+  if (!DATE.test(purchasedOn)) return { error: "วันที่ไม่ถูกต้อง" };
+  if (!trainerId) return { error: "เลือกเทรนเนอร์ที่เทรนให้" };
+  if (!soldBy) return { error: "เลือกผู้ขาย เพื่อใช้คิดค่าคอม" };
+
+  const { count: earlier } = await supabase
+    .from("member_purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("kind", "pt");
+
+  const { error } = await supabase.from("member_purchases").insert({
+    branch_id: staffer.branch_id,
+    member_id: memberId,
+    package_id: null,
+    kind: "pt",
+    package_name: `PT ${hours} ชั่วโมง${bonus ? ` แถม ${bonus}` : ""}`,
+    amount,
+    payment_method: method,
+    sold_by: soldBy,
+    purchased_on: purchasedOn,
+    starts_on: null,
+    ends_on: null,
+    pt_sessions: hours + bonus,
+    is_renewal: (earlier ?? 0) > 0,
+    note,
+    created_by: staffer.id,
+  });
+  if (error) return { error: error.message };
+
+  await supabase.from("members").update({ pt_trainer_id: trainerId }).eq("id", memberId);
+
+  refresh(memberId);
+  return { success: true };
+}
+
 // Move a membership's end date: a freeze, a goodwill extension, or a fix.
 export async function changePurchaseEnd(purchaseId: string, memberId: string, endsOn: string): Promise<Result> {
   await requireRole("owner", "staff");

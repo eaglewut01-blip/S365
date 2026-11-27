@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select } from "@/components/ui/Input";
 import { StatTile } from "@/components/ui/StatTile";
-import { changePurchaseEnd, deletePurchase, sellPackage, updateMemberDetails } from "@/lib/actions/purchases";
+import { changePurchaseEnd, deletePurchase, sellPackage, sellPt, updateMemberDetails } from "@/lib/actions/purchases";
 import { expiryLabel, expiryState, formatDateTh, membershipEnd, suggestedStart, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
 import { PAYMENT_LABEL, packageTerms } from "@/lib/labels";
@@ -39,8 +39,8 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
 
   if (packages.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-panel p-[18px] text-[13.5px] text-text-lo">
-        ยังไม่มีแพ็กเกจที่ขายอยู่ เจ้าของสร้างได้ที่เมนู{" "}
+      <div className="text-[13.5px] text-text-lo">
+        ยังไม่มีแพ็กเกจสมาชิกที่ขายอยู่ เจ้าของสร้างได้ที่เมนู{" "}
         <Link href="/owner/packages" className="text-volt">
           แพ็กเกจ
         </Link>
@@ -61,10 +61,7 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
           }
         })
       }
-      id="sell"
-      className="scroll-mt-4 rounded-xl border border-border bg-panel p-[18px]"
     >
-      <h2 className="m-0 mb-3 font-heading text-[15px] text-text-hi">บันทึกการซื้อแพ็กเกจ</h2>
       <input type="hidden" name="member_id" value={member.id} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="แพ็กเกจ" className="col-span-2">
@@ -80,20 +77,11 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
             required
           >
             <option value="">เลือกแพ็กเกจ</option>
-            <optgroup label="สมาชิก">
-              {packages.filter((p) => p.kind === "membership").map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({packageTerms(p)})
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="PT เทรนเนอร์">
-              {packages.filter((p) => p.kind === "pt").map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({packageTerms(p)})
-                </option>
-              ))}
-            </optgroup>
+            {packages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({packageTerms(p)})
+              </option>
+            ))}
           </Select>
         </Field>
         <Field label="ยอดชำระ (บาท)">
@@ -130,18 +118,6 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
             </Field>
           </>
         )}
-        {pkg?.kind === "pt" && (
-          <Field label="เทรนเนอร์ที่เทรนให้">
-            <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""} required>
-              <option value="">เลือกเทรนเนอร์</option>
-              {team.filter((t) => t.role === "trainer").map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
         <Field label="ผู้ขาย (ใช้คิดค่าคอม)">
           <Select name="sold_by" defaultValue={currentUserId} required>
             <option value="">เลือกผู้ขาย</option>
@@ -156,17 +132,155 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
           <Input name="note" placeholder="เช่น รอเริ่ม หรือ โปรพิเศษ" />
         </Field>
       </div>
-      {pkg?.kind === "pt" && (
-        <p className="mt-3 mb-0 text-[12.5px] text-text-lo">
-          จะเพิ่มชั่วโมง PT ให้ {pkg.sessions + pkg.bonus_sessions} ชั่วโมง (ตอนนี้เหลือ {member.pt_remaining} ชั่วโมง)
-        </p>
-      )}
       {message.error && <div className="mt-2.5 text-[12.5px] text-coral">{message.error}</div>}
       {message.success && <div className="mt-2.5 text-[12.5px] text-mint">บันทึกแล้ว</div>}
       <Button type="submit" variant="primary" disabled={pending} className="mt-4">
         {pending ? "กำลังบันทึก..." : "บันทึกการซื้อ"}
       </Button>
     </form>
+  );
+}
+
+// PT is typed in each time: hours bought, free hours, price, trainer, seller.
+function PtSellForm({ member, team, currentUserId }: { member: Member; team: TeamMember[]; currentUserId: string }) {
+  const [hours, setHours] = useState("");
+  const [bonus, setBonus] = useState("");
+  const [perHour, setPerHour] = useState("");
+  // The total follows hours x price until staff type their own figure.
+  const [amountTyped, setAmountTyped] = useState("");
+  const [message, setMessage] = useState<{ error?: string; success?: boolean }>({});
+  const [pending, startTransition] = useTransition();
+
+  const h = Math.max(0, Math.floor(Number(hours) || 0));
+  const free = Math.max(0, Math.floor(Number(bonus) || 0));
+  const computed = h > 0 && Number(perHour) > 0 ? String(Math.round(h * Number(perHour))) : "";
+  const amount = amountTyped || computed;
+  const trainers = team.filter((t) => t.role === "trainer");
+
+  return (
+    <form
+      action={(formData) =>
+        startTransition(async () => {
+          const res = await sellPt(formData);
+          setMessage(res);
+          if (res.success) {
+            setHours("");
+            setBonus("");
+            setPerHour("");
+            setAmountTyped("");
+          }
+        })
+      }
+    >
+      <input type="hidden" name="member_id" value={member.id} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Field label="ชั่วโมงที่ซื้อ">
+          <Input name="hours" type="number" min={1} step="1" inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value)} required />
+        </Field>
+        <Field label="ชั่วโมงแถม">
+          <Input name="bonus_hours" type="number" min={0} step="1" inputMode="numeric" value={bonus} onChange={(e) => setBonus(e.target.value)} placeholder="0" />
+        </Field>
+        <Field label="ราคาต่อชั่วโมง (บาท)">
+          <Input
+            type="number"
+            min={0}
+            step="1"
+            inputMode="numeric"
+            value={perHour}
+            onChange={(e) => {
+              setPerHour(e.target.value);
+              setAmountTyped("");
+            }}
+            placeholder="ไม่บังคับ"
+          />
+        </Field>
+        <Field label="ยอดชำระรวม (บาท)">
+          <Input name="amount" type="number" min={0} step="1" inputMode="numeric" value={amount} onChange={(e) => setAmountTyped(e.target.value)} required />
+        </Field>
+        <Field label="เทรนเนอร์ที่เทรนให้">
+          <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""} required>
+            <option value="">เลือกเทรนเนอร์</option>
+            {trainers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="ผู้ขาย (ใช้คิดค่าคอม)">
+          <Select name="sold_by" defaultValue={currentUserId} required>
+            <option value="">เลือกผู้ขาย</option>
+            {team.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="วิธีชำระ">
+          <Select name="payment_method" defaultValue="transfer">
+            {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="วันที่ซื้อ">
+          <Input name="purchased_on" type="date" defaultValue={todayBangkok()} required />
+        </Field>
+        <Field label="หมายเหตุ (ไม่บังคับ)" className="col-span-2 sm:col-span-4">
+          <Input name="note" placeholder="เช่น โปรซื้อ 24 แถม 4" />
+        </Field>
+      </div>
+      {trainers.length === 0 && (
+        <p className="mt-3 mb-0 text-[12.5px] text-amber">
+          ยังไม่มีบัญชีเทรนเนอร์ให้เลือก เจ้าของสร้างได้ที่เมนู{" "}
+          <Link href="/owner/team" className="text-volt">
+            ทีมงาน
+          </Link>
+        </p>
+      )}
+      {h > 0 && (
+        <p className="mt-3 mb-0 text-[12.5px] text-text-lo">
+          ลูกค้าจะได้ {h + free} ชั่วโมง ({h} ซื้อ{free ? ` + ${free} แถม` : ""}) รวมกับที่เหลืออยู่ {member.pt_remaining} เป็น {member.pt_remaining + h + free} ชั่วโมง
+          {Number(amount) > 0 ? ` · เฉลี่ยชั่วโมงละ ${formatBaht(Math.round(Number(amount) / (h + free)))}` : ""}
+        </p>
+      )}
+      {message.error && <div className="mt-2.5 text-[12.5px] text-coral">{message.error}</div>}
+      {message.success && <div className="mt-2.5 text-[12.5px] text-mint">บันทึกแล้ว</div>}
+      <Button type="submit" variant="primary" disabled={pending} className="mt-4">
+        {pending ? "กำลังบันทึก..." : "บันทึกการขาย PT"}
+      </Button>
+    </form>
+  );
+}
+
+// Membership is picked from the owner's packages; PT is entered by hand.
+function SellPanel({ member, packages, team, currentUserId }: { member: Member; packages: Package[]; team: TeamMember[]; currentUserId: string }) {
+  const [tab, setTab] = useState<"membership" | "pt">("membership");
+  const tabClass = (active: boolean) =>
+    `cursor-pointer rounded-lg border px-3.5 py-2 font-body text-[13.5px] font-semibold ${
+      active ? "border-volt bg-volt/10 text-volt" : "border-border bg-transparent text-text-lo hover:text-text-hi"
+    }`;
+
+  return (
+    <section id="sell" className="scroll-mt-4 rounded-xl border border-border bg-panel p-[18px]">
+      <h2 className="m-0 mb-3 font-heading text-[15px] text-text-hi">บันทึกการขาย</h2>
+      <div className="mb-4 flex flex-wrap gap-2" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === "membership"} onClick={() => setTab("membership")} className={tabClass(tab === "membership")}>
+          สมาชิกรายเดือน
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "pt"} onClick={() => setTab("pt")} className={tabClass(tab === "pt")}>
+          PT เทรนเนอร์ (กรอกชั่วโมงเอง)
+        </button>
+      </div>
+      {tab === "membership" ? (
+        <SellForm member={member} packages={packages.filter((p) => p.kind === "membership")} team={team} currentUserId={currentUserId} />
+      ) : (
+        <PtSellForm member={member} team={team} currentUserId={currentUserId} />
+      )}
+    </section>
   );
 }
 
@@ -331,7 +445,7 @@ export function MemberDetailClient({
         </div>
       ) : (
         <>
-          <SellForm member={member} packages={packages} team={team} currentUserId={currentUserId} />
+          <SellPanel member={member} packages={packages} team={team} currentUserId={currentUserId} />
 
           <h2 className="m-0 mt-6 mb-2.5 font-heading text-[15px] text-text-hi">ประวัติการซื้อ</h2>
           <div className="overflow-hidden rounded-xl border border-border">
