@@ -149,6 +149,111 @@ export async function sellPt(formData: FormData): Promise<Result> {
   return { success: true };
 }
 
+export type SaleResult = { error?: string; success?: boolean; memberId?: string; memberName?: string; lines?: string[] };
+
+// The one-screen sale: a seller picks or adds the customer, then records a
+// membership, PT hours, or both, with the trainer and how it was paid.
+// Everything is checked before anything is saved.
+export async function recordSale(formData: FormData): Promise<SaleResult> {
+  const staffer = await requireRole("owner", "staff");
+  if (!staffer.branch_id) return { error: "บัญชีนี้ยังไม่ได้ผูกกับสาขา" };
+  const supabase = await createClient();
+  const field = (name: string) => String(formData.get(name) || "").trim();
+
+  const soldBy = field("sold_by");
+  const method = (field("payment_method") || "transfer") as PaymentMethod;
+  const purchasedOn = field("purchased_on") || todayBangkok();
+  const note = field("note") || null;
+  if (!soldBy) return { error: "เลือกผู้ขาย เพื่อใช้คิดค่าคอม" };
+  if (!METHODS.includes(method)) return { error: "เลือกวิธีชำระ" };
+  if (!DATE.test(purchasedOn)) return { error: "วันที่ซื้อไม่ถูกต้อง" };
+
+  // What is being sold
+  const packageId = field("package_id");
+  const hours = Math.floor(Number(field("pt_hours") || 0));
+  const bonus = Math.floor(Number(field("pt_bonus") || 0));
+  if (!packageId && hours < 1) return { error: "เลือกแพ็กเกจสมาชิก หรือใส่ชั่วโมง PT อย่างน้อยหนึ่งอย่าง" };
+
+  let pkg: Package | null = null;
+  const membershipAmount = Number(field("membership_amount") || 0);
+  const startsOn = field("starts_on") || purchasedOn;
+  let endsOn = field("ends_on");
+  if (packageId) {
+    const { data } = await supabase.from("packages").select("*").eq("id", packageId).eq("kind", "membership").maybeSingle<Package>();
+    pkg = data;
+    if (!pkg) return { error: "ไม่พบแพ็กเกจสมาชิกนี้" };
+    if (!Number.isFinite(membershipAmount) || membershipAmount < 0) return { error: "ยอดชำระค่าสมาชิกไม่ถูกต้อง" };
+    if (!DATE.test(startsOn) || (endsOn && !DATE.test(endsOn))) return { error: "วันเริ่มหรือวันหมดอายุไม่ถูกต้อง" };
+    endsOn = endsOn || membershipEnd(startsOn, pkg.months, pkg.bonus_months, pkg.bonus_days);
+    if (endsOn < startsOn) return { error: "วันหมดอายุต้องไม่ก่อนวันเริ่ม" };
+  }
+
+  const ptAmount = Number(field("pt_amount") || 0);
+  const trainerId = field("pt_trainer_id");
+  if (hours >= 1) {
+    if (!Number.isFinite(bonus) || bonus < 0) return { error: "ชั่วโมงแถมไม่ถูกต้อง" };
+    if (!Number.isFinite(ptAmount) || ptAmount < 0) return { error: "ยอดชำระค่า PT ไม่ถูกต้อง" };
+    if (!trainerId) return { error: "เลือกเทรนเนอร์ที่เทรนให้" };
+  }
+
+  // The customer: an existing member, or a new one added here
+  let memberId = field("member_id");
+  let memberName = "";
+  if (memberId) {
+    const { data: member } = await supabase.from("members").select("id, name").eq("id", memberId).maybeSingle();
+    if (!member) return { error: "ไม่พบลูกค้าคนนี้" };
+    memberName = member.name;
+  } else {
+    const name = field("new_name");
+    const digits = field("new_phone").replace(/\D/g, "");
+    if (!name) return { error: "เลือกลูกค้า หรือกรอกชื่อลูกค้าใหม่" };
+    if (digits && digits.length !== 10) return { error: "เบอร์โทรต้องมี 10 หลัก" };
+    if (digits) {
+      const { data: same } = await supabase.from("members").select("name").eq("branch_id", staffer.branch_id).eq("phone", digits).limit(1);
+      if (same && same.length > 0) return { error: `เบอร์นี้มีในระบบแล้วในชื่อ ${same[0].name} ให้เลือกจากลูกค้าเดิม` };
+    }
+    const { data: created, error } = await supabase
+      .from("members")
+      .insert({ branch_id: staffer.branch_id, name, phone: digits || null, plan: "-", status: "active", joined_date: purchasedOn, visit_count: 0, billing_status: "paid", amount: 0 })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    memberId = created.id;
+    memberName = name;
+  }
+
+  const lines: string[] = [];
+  const earlier = async (kind: "membership" | "pt") =>
+    ((await supabase.from("member_purchases").select("id", { count: "exact", head: true }).eq("member_id", memberId).eq("kind", kind)).count ?? 0) > 0;
+  const base = { branch_id: staffer.branch_id, member_id: memberId, payment_method: method, sold_by: soldBy, purchased_on: purchasedOn, note, created_by: staffer.id };
+
+  if (pkg) {
+    const { error } = await supabase.from("member_purchases").insert({
+      ...base, package_id: pkg.id, kind: "membership", package_name: pkg.name, amount: membershipAmount,
+      starts_on: startsOn, ends_on: endsOn, pt_sessions: 0, is_renewal: await earlier("membership"),
+    });
+    if (error) return { error: error.message, memberId, memberName };
+    await supabase.from("members").update({ plan: pkg.name, status: "active" }).eq("id", memberId);
+    lines.push(`สมาชิก ${pkg.name} ถึงวันที่ ${endsOn}`);
+  }
+
+  if (hours >= 1) {
+    const { error } = await supabase.from("member_purchases").insert({
+      ...base, package_id: null, kind: "pt", package_name: `PT ${hours} ชั่วโมง${bonus ? ` แถม ${bonus}` : ""}`, amount: ptAmount,
+      starts_on: null, ends_on: null, pt_sessions: hours + bonus, is_renewal: await earlier("pt"),
+    });
+    if (error) {
+      return { error: `${lines.length ? "บันทึกค่าสมาชิกแล้ว แต่" : ""}บันทึก PT ไม่สำเร็จ: ${error.message}`, memberId, memberName, lines };
+    }
+    await supabase.from("members").update({ pt_trainer_id: trainerId }).eq("id", memberId);
+    lines.push(`PT ${hours + bonus} ชั่วโมง`);
+  }
+
+  refresh(memberId);
+  revalidatePath("/owner/sell");
+  return { success: true, memberId, memberName, lines };
+}
+
 // Move a membership's end date: a freeze, a goodwill extension, or a fix.
 export async function changePurchaseEnd(purchaseId: string, memberId: string, endsOn: string): Promise<Result> {
   await requireRole("owner", "staff");

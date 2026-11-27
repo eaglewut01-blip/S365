@@ -13,11 +13,13 @@ import {
   Package,
   CalendarClock,
   Contact,
+  ShoppingCart,
 } from "lucide-react";
 import { PortalNav, type NavItem } from "./PortalNav";
 
 const baseItems: NavItem[] = [
   { href: "/owner", label: "ภาพรวม", icon: LayoutGrid },
+  { href: "/owner/sell", label: "ขาย", icon: ShoppingCart },
   { href: "/owner/members", label: "สมาชิก", icon: Users },
   { href: "/owner/checkin", label: "เช็คอิน", icon: ScanLine },
   { href: "/owner/packages", label: "แพ็กเกจ", icon: Package },
@@ -25,7 +27,7 @@ const baseItems: NavItem[] = [
   { href: "/owner/trainer-clients", label: "ลูกค้า PT", icon: Contact },
   { href: "/owner/schedule", label: "ตารางคลาส", icon: CalendarDays },
   { href: "/owner/pt-sessions", label: "เซสชัน PT", icon: ClipboardCheck },
-  { href: "/owner/billing", label: "การขาย", icon: Receipt },
+  { href: "/owner/billing", label: "ยอดขาย", icon: Receipt },
   { href: "/owner/reports", label: "รายงาน", icon: BarChart3 },
 ];
 

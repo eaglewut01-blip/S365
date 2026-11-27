@@ -8,9 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { addMonths, formatDateTh, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
 import { PAYMENT_LABEL } from "@/lib/labels";
-import { fetchAll } from "@/lib/supabase/fetch-all";
 import type { MemberPurchase } from "@/types/database";
-import { NewSaleSearch } from "./NewSaleSearch";
 
 export const metadata = { title: "การขาย | S365 Fitness" };
 
@@ -38,7 +36,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   const start = `${month}-01`;
   const next = addMonths(start, 1);
 
-  const [salesResult, membersResult] = await Promise.all([
+  const [salesResult] = await Promise.all([
     supabase
       .from("member_purchases")
       .select("*, member:members(name), seller:profiles!member_purchases_sold_by_fkey(full_name)")
@@ -47,9 +45,6 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
       .lt("purchased_on", next)
       .order("purchased_on", { ascending: false })
       .order("created_at", { ascending: false }),
-    fetchAll<{ id: string; name: string; phone: string | null }>((from, to) =>
-      supabase.from("members").select("id, name, phone").eq("branch_id", branchId).neq("status", "cancelled").order("name").order("id").range(from, to)
-    ),
   ]);
 
   const sales = (salesResult.data ?? []) as unknown as Sale[];
@@ -68,7 +63,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="p-4 sm:p-7">
-      <PageHeader title="การขาย" subtitle="ยอดขายรายเดือน ยอดของผู้ขายแต่ละคนสำหรับคิดค่าคอม และรายการขายทั้งหมด" />
+      <PageHeader title="ยอดขาย" subtitle="ยอดขายรายเดือน ยอดของผู้ขายแต่ละคนสำหรับคิดค่าคอม และรายการขายทั้งหมด" />
 
       {salesResult.error ? (
         <div className="rounded-xl border border-amber bg-amber-bg p-[18px] text-[13.5px] leading-relaxed text-text-hi">
@@ -76,7 +71,12 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
         </div>
       ) : (
         <>
-          <NewSaleSearch members={membersResult.data} />
+          <Link
+            href="/owner/sell"
+            className="mb-5 inline-flex items-center gap-1.5 rounded-lg border border-volt bg-volt px-4 py-2.5 font-body text-[13.5px] font-semibold text-volt-ink no-underline hover:brightness-110"
+          >
+            สร้างรายการขาย
+          </Link>
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Link href={`/owner/billing?m=${addMonths(start, -1).slice(0, 7)}`} aria-label="เดือนก่อนหน้า" className={navLink}>
