@@ -4,7 +4,8 @@ import { getCurrentMember } from "@/lib/member";
 import { createClient } from "@/lib/supabase/server";
 import { StatTile } from "@/components/ui/StatTile";
 import { Badge } from "@/components/ui/Badge";
-import { dayLabelTh, formatBaht, todayDateLabelTh } from "@/lib/format";
+import { dayLabelTh, todayDateLabelTh } from "@/lib/format";
+import { expiryLabel, expiryState, formatDateTh } from "@/lib/dates";
 
 export default async function MemberHomePage() {
   const profile = await requireRole("member");
@@ -27,13 +28,17 @@ export default async function MemberHomePage() {
     .eq("member_id", member.id)
     .eq("status", "booked");
 
+  const { data: promoData } = await supabase.rpc("my_promotions");
+  const promotions = (promoData ?? []) as { title: string; body: string }[];
+  const expiry = expiryState(member.membership_expires_on);
+
   const bookings = (bookingsRaw ?? []) as unknown as {
     status: string;
     class: { id: string; name: string; day_of_week: number; start_time: string } | null;
   }[];
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <h1 className="m-0 font-heading text-2xl font-bold text-text-hi">สวัสดี, {member.name}</h1>
       <p className="mt-1.5 mb-6 font-body text-[13.5px] text-text-lo">{todayDateLabelTh()}</p>
 
@@ -44,12 +49,20 @@ export default async function MemberHomePage() {
           <StatTile label="ชั่วโมง PT คงเหลือ" value={`${member.pt_remaining}/${member.pt_total}`} tone={member.pt_remaining <= 2 ? "amber" : "mint"} />
         )}
         <StatTile
-          label="ค่าบริการงวดถัดไป"
-          value={formatBaht(Number(member.amount))}
-          sub={member.next_bill_date ?? undefined}
-          tone={member.billing_status === "overdue" ? "coral" : member.billing_status === "due" ? "amber" : "mint"}
+          label="อายุสมาชิก"
+          value={expiryLabel(member.membership_expires_on)}
+          sub={member.membership_expires_on ? `ถึง ${formatDateTh(member.membership_expires_on)}` : undefined}
+          tone={expiry.state === "expired" ? "coral" : expiry.state === "soon" ? "amber" : expiry.state === "ok" ? "mint" : undefined}
         />
       </div>
+
+      {promotions.map((promo, i) => (
+        <div key={i} className="mb-4 rounded-xl border border-volt bg-volt/10 p-[18px]">
+          <div className="font-body text-[11px] font-semibold tracking-[0.2em] text-volt">โปรโมชั่นสำหรับคุณ</div>
+          <div className="mt-1.5 font-body text-[16px] font-semibold text-text-hi">{promo.title}</div>
+          {promo.body && <p className="mt-1.5 mb-0 whitespace-pre-line text-[13.5px] leading-relaxed text-text-lo">{promo.body}</p>}
+        </div>
+      ))}
 
       <div className="rounded-xl border border-border bg-panel p-[18px]">
         <div className="mb-3 flex items-center justify-between">

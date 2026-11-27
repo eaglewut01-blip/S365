@@ -17,9 +17,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-base print:block print:bg-white">
+    <div className="flex min-h-screen flex-col bg-base md:flex-row print:block print:bg-white">
       <OwnerSidebar branchName={branchName} isOwner={profile.role === "owner"} />
-      <div className="flex-1 overflow-y-auto print:overflow-visible">{children}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto print:overflow-visible">{children}</div>
     </div>
   );
 }

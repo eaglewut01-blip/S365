@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
+import { todayBangkok } from "@/lib/dates";
 
 // Trainer logs that a session happened. Always starts "pending" — RLS
 // enforces trainer_id = the logged-in trainer and status = 'pending'.
@@ -20,7 +21,7 @@ export async function logPtSession(formData: FormData) {
     member_id: memberId,
     trainer_id: trainer.id,
     branch_id: trainer.branch_id,
-    session_date: new Date().toISOString().slice(0, 10),
+    session_date: todayBangkok(),
     session_time: sessionTime,
     status: "pending",
   });

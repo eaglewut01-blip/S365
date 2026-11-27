@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
+import { todayBangkok } from "@/lib/dates";
 
 export async function checkInMember(memberId: string) {
   const staffer = await requireRole("owner", "staff");
@@ -10,7 +11,7 @@ export async function checkInMember(memberId: string) {
 
   if (!staffer.branch_id) return { error: "บัญชีนี้ยังไม่ได้ผูกกับสาขา" };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayBangkok();
 
   const { error: checkinError } = await supabase.from("checkins").insert({
     member_id: memberId,

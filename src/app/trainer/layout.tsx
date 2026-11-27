@@ -5,9 +5,9 @@ export default async function TrainerLayout({ children }: { children: React.Reac
   const profile = await requireRole("trainer");
 
   return (
-    <div className="flex min-h-screen bg-base">
+    <div className="flex min-h-screen flex-col bg-base md:flex-row">
       <TrainerSidebar name={profile.full_name} />
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
