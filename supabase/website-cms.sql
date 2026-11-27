@@ -34,6 +34,11 @@ create table if not exists public.site_photos (
   created_by uuid references public.profiles (id) on delete set null
 );
 
+-- Sections added after the table first existed (the weekly class timetable image).
+alter table public.site_photos drop constraint if exists site_photos_section_check;
+alter table public.site_photos add constraint site_photos_section_check
+  check (section in ('hero', 'trainers', 'zones', 'results', 'community', 'schedule'));
+
 create index if not exists site_photos_section_order_idx on public.site_photos (section, sort_order);
 
 alter table public.site_texts enable row level security;

@@ -266,7 +266,7 @@ export function storageKey(locale: Locale, key: string) {
 }
 
 // Photo sections the owner can fill from the back office.
-export type PhotoSection = "hero" | "trainers" | "zones" | "results" | "community";
+export type PhotoSection = "hero" | "trainers" | "zones" | "results" | "community" | "schedule";
 
 export const photoSections: {
   id: PhotoSection;
@@ -286,6 +286,11 @@ export const photoSections: {
   { id: "zones", title: "ภาพโซนในยิม", help: "เรียงตามลำดับโซนที่ 1 ถึง 4 ใช้ 4 ภาพแรก", max: 4 },
   { id: "results", title: "ภาพผลลัพธ์ของสมาชิก", help: "โปสเตอร์ก่อนและหลัง ควรได้รับอนุญาตจากสมาชิกก่อนเผยแพร่" },
   { id: "community", title: "ภาพคอมมูนิตี้", help: "ภาพแรกแสดงใหญ่ที่สุด ภาพที่ 2 และ 3 เป็นภาพแนวตั้ง ภาพถัดไปแสดงเป็นแถวเล็กด้านล่าง" },
+  {
+    id: "schedule",
+    title: "ตารางคลาสประจำสัปดาห์",
+    help: "อัปโหลดภาพตารางคลาสแบบเดียวกับที่โพสต์ใน Facebook หน้าเว็บจะแสดงภาพที่อัปโหลดล่าสุดเป็นตารางของสัปดาห์นี้ ทุกวันจันทร์อัปโหลดภาพใหม่ได้เลย ภาพเก่าลบทิ้งได้",
+  },
 ];
 
 export const SITE_MEDIA_BUCKET = "site-media";

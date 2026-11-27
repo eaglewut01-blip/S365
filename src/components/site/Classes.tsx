@@ -1,6 +1,7 @@
 import { Activity, Disc3, Dumbbell, Flower2, HandFist, HeartPulse, Music, Music2, PersonStanding, Sparkles, Target, Timer, Trophy, Wind, Zap, type LucideIcon } from "lucide-react";
 import type { SiteContent } from "@/lib/site-content";
 import { CtaLink } from "./primitives";
+import { SiteImage } from "./SiteImage";
 
 // Picks an icon from the class name. The order matters: the first match wins.
 // A class the list does not know about gets the default icon, so new classes added from the back office still look right.
@@ -28,10 +29,26 @@ function iconFor(name: string): LucideIcon {
 // The group classes the gym runs, as a list of names. Hidden when the owner clears the list.
 export function Classes({ content }: { content: SiteContent }) {
   const { classes, contact } = content;
-  if (classes.items.length === 0) return null;
+  if (classes.items.length === 0 && !classes.schedule) return null;
+  const scheduleUrl = classes.schedule && typeof classes.schedule.src === "string" ? classes.schedule.src : null;
+  const updated = classes.scheduleUpdated
+    ? new Date(classes.scheduleUpdated).toLocaleDateString(content.locale === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "long", year: "numeric" })
+    : "";
   return (
     <div className="mt-12 md:mt-16">
       <h3 className="text-2xl font-semibold text-text-hi md:text-3xl">{classes.title}</h3>
+      {classes.schedule && (
+        <figure className="mt-5 max-w-3xl">
+          <a href={scheduleUrl ?? undefined} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-[3px] ring-1 ring-white/[0.08]">
+            <SiteImage photo={classes.schedule} sizes="(min-width: 768px) 768px, 100vw" className="h-auto w-full" />
+          </a>
+          <figcaption className="mt-2 text-sm font-light text-text-lo">
+            {content.locale === "en" ? "This week's class timetable" : "ตารางคลาสสัปดาห์นี้"}
+            {updated ? (content.locale === "en" ? ` · updated ${updated}` : ` · อัปเดต ${updated}`) : ""}
+            {content.locale === "en" ? " · tap the image to enlarge" : " · แตะภาพเพื่อดูขนาดใหญ่"}
+          </figcaption>
+        </figure>
+      )}
       <ul className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3.5 lg:grid-cols-4">
         {classes.items.map((name) => {
           const Icon = iconFor(name);

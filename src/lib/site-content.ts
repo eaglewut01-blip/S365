@@ -58,7 +58,8 @@ export interface SiteContent {
   hours: { days: string; time: string }[];
   geo: { lat: number; lng: number };
   tickerItems: string[];
-  classes: { title: string; items: string[]; note: string };
+  /** `schedule` is this week's timetable image, when the owner has uploaded one. */
+  classes: { title: string; items: string[]; note: string; schedule: SitePhoto | null; scheduleUpdated: string | null };
   zones: { title: string; label: string; text: string }[];
   photos: {
     hero: SitePhoto;
@@ -88,6 +89,7 @@ interface PhotoRow {
   alt: string | null;
   width: number;
   height: number;
+  created_at?: string;
 }
 
 const ZONE_LABELS = ["MACHINE", "FREE WEIGHT", "FUNCTIONAL", "CARDIO"];
@@ -166,6 +168,9 @@ export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteC
     return rows.slice(0, max).map((row) => toSitePhoto(row, describe(row)));
   };
 
+  // The timetable changes weekly, so the newest upload wins whatever its position in the list.
+  const latestSchedule = uploaded("schedule").sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0] as PhotoRow | undefined;
+
   const trainers = pick(
     "trainers",
     defaultTrainers.map((trainer) => ({ src: trainer.src, alt: trainer.alt, title: trainer.name })),
@@ -231,6 +236,10 @@ export const getSiteContent = cache(async (locale: Locale = "th"): Promise<SiteC
         .map((item) => item.trim())
         .filter(Boolean),
       note: t["classes.note"],
+      schedule: latestSchedule
+        ? toSitePhoto(latestSchedule, locale === "en" ? "S365 Fitness class timetable for this week" : "ตารางคลาสประจำสัปดาห์ของ S365 Fitness")
+        : null,
+      scheduleUpdated: latestSchedule?.created_at ?? null,
     },
     zones: zoneTitles.map((title, i) => ({ title, label: ZONE_LABELS[i], text: zoneTexts[i] })),
     photos: {

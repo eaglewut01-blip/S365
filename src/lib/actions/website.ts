@@ -196,6 +196,7 @@ export async function importBuiltInPhotos(section: PhotoSection): Promise<Action
     zones: zonePhotos.map((photo) => ({ ...photo, title: undefined })),
     results: results.map((photo) => ({ ...photo, title: undefined })),
     community: communityHighlights.map((photo) => ({ ...photo, title: undefined })),
+    schedule: [],
   }[section];
 
   const requestHeaders = await headers();

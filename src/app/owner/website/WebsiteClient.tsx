@@ -316,7 +316,7 @@ function PhotoSectionCard({
     try {
       for (const [index, file] of Array.from(files).entries()) {
         setProgress(`กำลังอัปโหลด ${index + 1} จาก ${files.length}`);
-        const { path: storagePath, width, height } = await uploadImage(section.id, file, section.id === "hero" ? 2400 : 1600);
+        const { path: storagePath, width, height } = await uploadImage(section.id, file, section.id === "hero" ? 2400 : section.id === "schedule" ? 2000 : 1600);
         const result = await addSitePhoto({ section: section.id, storagePath, width, height });
         if ("error" in result) throw new Error(result.error);
         uploaded += 1;
