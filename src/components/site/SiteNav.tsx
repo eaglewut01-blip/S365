@@ -1,4 +1,3 @@
-import Link from "next/link";
 import clsx from "clsx";
 import { locales } from "@/content/site-texts";
 import { localePaths } from "@/content/ui-strings";
@@ -78,9 +77,6 @@ export function SiteNav({ content, path = "" }: { content: SiteContent; path?: s
               </span>
             ))}
           </div>
-          <Link href="/login" className={clsx("hidden text-sm text-white/80 transition hover:text-white xl:inline", shadow)}>
-            {ui.login}
-          </Link>
           <CtaLink href={content.contact.lineHref} external className="!hidden !px-4 !py-2.5 !text-[15px] sm:!inline-flex md:!px-5">
             {ui.addLine}
           </CtaLink>
@@ -112,11 +108,6 @@ export function SiteNav({ content, path = "" }: { content: SiteContent; path?: s
                     </a>
                   </li>
                 ))}
-                <li className="border-b border-white/[0.08]">
-                  <Link href="/login" className="block py-3.5 text-lg text-text-lo">
-                    {ui.loginLong}
-                  </Link>
-                </li>
               </ul>
             </nav>
           </details>

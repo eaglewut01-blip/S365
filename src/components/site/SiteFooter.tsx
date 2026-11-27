@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { SITE_NAME } from "@/content/site";
 import type { SiteContent } from "@/lib/site-content";
 import { Container, Wordmark } from "./primitives";
@@ -12,9 +11,6 @@ export function SiteFooter({ content }: { content: SiteContent }) {
           <span>
             © {new Date().getFullYear()} {SITE_NAME}
           </span>
-          <Link href="/login" className="text-text-lo transition hover:text-text-hi">
-            {content.ui.loginLong}
-          </Link>
         </div>
       </Container>
     </footer>
