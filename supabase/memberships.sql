@@ -80,6 +80,13 @@ alter table public.checkins add column if not exists activity text;
 alter table public.checkins drop constraint if exists checkins_activity_check;
 alter table public.checkins add constraint checkins_activity_check check (activity is null or activity in ('weights', 'cardio', 'class'));
 
+-- The id a member or sale had in the gym's previous system, so a migration
+-- can be traced back and run again without adding anything twice.
+alter table public.members add column if not exists legacy_code text;
+create unique index if not exists members_legacy_code_idx on public.members (branch_id, legacy_code) where legacy_code is not null;
+alter table public.member_purchases add column if not exists legacy_code text;
+create unique index if not exists member_purchases_legacy_code_idx on public.member_purchases (legacy_code) where legacy_code is not null;
+
 -- The secret printed inside the front-desk QR code.
 alter table public.branches add column if not exists checkin_token text;
 create unique index if not exists branches_checkin_token_idx on public.branches (checkin_token) where checkin_token is not null;
