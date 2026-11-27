@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { toLoginEmail } from "@/lib/staff-login";
 import type { Role } from "@/types/database";
 
 const ROLE_HOME: Record<Role, string> = {
@@ -12,18 +13,19 @@ const ROLE_HOME: Record<Role, string> = {
 };
 
 export async function login(_prevState: { error: string } | null, formData: FormData) {
-  const email = String(formData.get("email") || "").trim();
+  // An email address, or a staff ID created by the owner.
+  const email = toLoginEmail(String(formData.get("email") || ""));
   const password = String(formData.get("password") || "");
 
-  if (!email || !password) {
-    return { error: "กรอกอีเมลและรหัสผ่านให้ครบก่อน" };
+  if (!String(formData.get("email") || "").trim() || !password) {
+    return { error: "กรอกไอดีหรืออีเมล และรหัสผ่านให้ครบก่อน" };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.user) {
-    return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+    return { error: "ไอดีหรือรหัสผ่านไม่ถูกต้อง" };
   }
 
   const { data: profile } = await supabase

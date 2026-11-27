@@ -23,6 +23,8 @@ export type PasswordFormState = { error?: string; sent?: boolean } | null;
 export async function requestPasswordReset(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
   const email = String(formData.get("email") || "").trim();
   if (!email) return { error: "กรอกอีเมลก่อน" };
+  // An ID account has no mailbox: the owner sets a new password for it.
+  if (!email.includes("@")) return { error: "บัญชีที่เข้าด้วยไอดี ให้แจ้งเจ้าของตั้งรหัสผ่านใหม่ให้ที่เมนูทีมงาน" };
 
   // A link from the email must work on any device, so this request uses the
   // token-in-link flow instead of the cookie-bound one the app client uses.

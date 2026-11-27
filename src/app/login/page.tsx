@@ -29,8 +29,8 @@ export default function LoginPage() {
 
         <div className="flex flex-col gap-3">
           <div>
-            <div className="mb-1.5 text-[12.5px] text-text-lo">อีเมล</div>
-            <Input type="email" name="email" placeholder="you@example.com" required />
+            <div className="mb-1.5 text-[12.5px] text-text-lo">ไอดีหรืออีเมล</div>
+            <Input type="text" name="email" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="ไอดีที่ได้รับ หรืออีเมล" required />
           </div>
           <div>
             <div className="mb-1.5 text-[12.5px] text-text-lo">รหัสผ่าน</div>

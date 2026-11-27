@@ -26,11 +26,11 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <p className="mt-2 mb-5 text-[13px] leading-relaxed text-text-lo">
-              กรอกอีเมลที่ใช้เข้าสู่ระบบ เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้
+              กรอกอีเมลที่ใช้เข้าสู่ระบบ เราจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้ ถ้าเข้าด้วยไอดี ให้แจ้งเจ้าของตั้งรหัสผ่านใหม่ให้
             </p>
             <label className="block">
               <span className="mb-1.5 block text-[12.5px] text-text-lo">อีเมล</span>
-              <Input type="email" name="email" placeholder="you@example.com" autoComplete="email" required />
+              <Input type="text" name="email" placeholder="you@example.com" autoComplete="email" autoCapitalize="none" required />
             </label>
             {state?.error && <div className="mt-2.5 text-[12.5px] text-coral">{state.error}</div>}
             <Button type="submit" variant="primary" disabled={pending} className="mt-5 w-full py-2.5">
