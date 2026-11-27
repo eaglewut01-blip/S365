@@ -1,4 +1,4 @@
-import type { Package, PaymentMethod, PromotionAudience, SlotKind } from "@/types/database";
+import type { Package, PaymentMethod, PromotionAudience, SlotKind, VisitActivity } from "@/types/database";
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   transfer: "โอน",
@@ -12,6 +12,18 @@ export const AUDIENCE_LABEL: Record<PromotionAudience, string> = {
   pt_low: "ชั่วโมง PT ใกล้หมด",
   all: "สมาชิกทุกคน",
 };
+
+// What a member came to do on a visit; they tap one when checking in.
+export const ACTIVITY_LABEL: Record<VisitActivity, string> = {
+  weights: "เวท",
+  cardio: "คาร์ดิโอ",
+  class: "เข้าคลาส",
+};
+
+export const ACTIVITIES = Object.keys(ACTIVITY_LABEL) as VisitActivity[];
+
+// A PT client with this many hours left, or fewer, is "about to run out".
+export const PT_LOW_HOURS = 2;
 
 export const SLOT_LABEL: Record<SlotKind, string> = {
   pt: "เทรนลูกค้า",

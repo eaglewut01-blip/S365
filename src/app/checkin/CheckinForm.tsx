@@ -1,9 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import { CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleCheck, Dumbbell, HeartPulse, TriangleAlert, Users } from "lucide-react";
 import { selfCheckin, type CheckinResult } from "@/lib/actions/self-checkin";
 import { formatDateTh, formatTimeTh } from "@/lib/dates";
+import { ACTIVITIES, ACTIVITY_LABEL } from "@/lib/labels";
+import type { VisitActivity } from "@/types/database";
+
+const ACTIVITY_ICON: Record<VisitActivity, typeof Dumbbell> = { weights: Dumbbell, cardio: HeartPulse, class: Users };
 
 const REASON: Record<string, string> = {
   bad_link: "QR นี้ใช้ไม่ได้แล้ว กรุณาสแกนป้ายที่หน้าเคาน์เตอร์อีกครั้ง",
@@ -27,6 +31,7 @@ function Done({ result }: { result: Extract<CheckinResult, { ok: true }> }) {
         </h1>
         <p className="mt-1.5 mb-0 text-[15px] text-text-lo">
           คุณ{result.name} · เข้า {formatTimeTh(result.checked_in_at)} น.
+          {result.activity ? ` · ${ACTIVITY_LABEL[result.activity]}` : ""}
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-left">
@@ -105,13 +110,26 @@ export function CheckinForm({ token }: { token: string }) {
             />
           </label>
           {result && !result.ok && <div className="mt-3 text-[13.5px] leading-relaxed text-coral">{REASON[result.reason] ?? REASON.error}</div>}
-          <button
-            type="submit"
-            disabled={pending}
-            className="mt-5 w-full cursor-pointer rounded-xl border border-volt bg-volt px-4 py-3.5 font-body text-[16px] font-semibold text-volt-ink hover:brightness-110 disabled:cursor-default disabled:opacity-50"
-          >
-            {pending ? "กำลังเช็กอิน..." : "เช็กอิน"}
-          </button>
+          <div className="mt-5 text-[13px] text-text-lo">วันนี้มาเล่นอะไร กดเพื่อเช็กอิน</div>
+          <div className="mt-2 grid grid-cols-3 gap-2.5">
+            {ACTIVITIES.map((activity) => {
+              const Icon = ACTIVITY_ICON[activity];
+              return (
+                <button
+                  key={activity}
+                  type="submit"
+                  name="activity"
+                  value={activity}
+                  disabled={pending}
+                  className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-volt bg-volt px-2 py-4 font-body text-[15px] font-semibold text-volt-ink hover:brightness-110 disabled:cursor-default disabled:opacity-50"
+                >
+                  <Icon size={26} strokeWidth={2} />
+                  {ACTIVITY_LABEL[activity]}
+                </button>
+              );
+            })}
+          </div>
+          {pending && <div className="mt-3 text-center text-[13px] text-text-lo">กำลังเช็กอิน...</div>}
         </>
       ) : (
         <p className="mt-3 mb-0 text-[14px] leading-relaxed text-text-lo">{REASON.bad_link}</p>

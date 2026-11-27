@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -16,6 +17,12 @@ export interface NavItem {
 // phone it becomes a bar across the top whose items scroll sideways.
 export function PortalNav({ items, home, label, roleLabel }: { items: NavItem[]; home: string; label: string; roleLabel: string }) {
   const pathname = usePathname();
+  const nav = useRef<HTMLElement>(null);
+
+  // On a phone the menu scrolls sideways; keep the current page's item in view.
+  useEffect(() => {
+    nav.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
 
   return (
     <div className="flex w-full flex-shrink-0 flex-col border-b border-border bg-panel px-3 pt-3 md:w-56 md:border-r md:border-b-0 md:py-5 print:hidden">
@@ -34,7 +41,7 @@ export function PortalNav({ items, home, label, roleLabel }: { items: NavItem[];
         {label}
       </div>
 
-      <nav className="-mx-3 flex gap-0.5 overflow-x-auto px-3 pb-2 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
+      <nav ref={nav} className="-mx-3 flex gap-0.5 overflow-x-auto px-3 pb-2 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
         {items.map((item) => {
           const Icon = item.icon;
           const active = item.href === home ? pathname === home : pathname.startsWith(item.href);

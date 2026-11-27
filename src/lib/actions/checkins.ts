@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
 import { todayBangkok } from "@/lib/dates";
+import type { VisitActivity } from "@/types/database";
 
-export async function checkInMember(memberId: string) {
+export async function checkInMember(memberId: string, activity?: VisitActivity) {
   const staffer = await requireRole("owner", "staff");
   const supabase = await createClient();
 
@@ -16,6 +17,7 @@ export async function checkInMember(memberId: string) {
   const { error: checkinError } = await supabase.from("checkins").insert({
     member_id: memberId,
     branch_id: staffer.branch_id,
+    ...(activity ? { activity } : {}),
   });
   if (checkinError) return { error: checkinError.message };
 

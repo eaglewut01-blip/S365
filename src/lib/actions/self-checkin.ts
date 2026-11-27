@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
+import type { VisitActivity } from "@/types/database";
 
 export type CheckinResult =
   | { ok: false; reason: "bad_link" | "bad_phone" | "not_found" | "ask_staff" | "error" }
@@ -12,6 +13,7 @@ export type CheckinResult =
       new: boolean;
       name: string;
       checked_in_at: string;
+      activity: VisitActivity | null;
       expires_on: string | null;
       days_left: number | null;
       frozen: boolean;
@@ -28,6 +30,7 @@ export async function selfCheckin(_prev: CheckinResult | null, formData: FormDat
   const { data, error } = await supabase.rpc("self_checkin", {
     p_token: String(formData.get("k") || ""),
     p_phone: String(formData.get("phone") || ""),
+    p_activity: String(formData.get("activity") || "") || null,
   });
   if (error || !data) return { ok: false, reason: "error" };
   if (data.ok && data.new) revalidatePath("/tools/crowd");

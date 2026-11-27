@@ -17,6 +17,7 @@ function refresh(memberId: string) {
   revalidatePath("/owner/billing");
   revalidatePath("/owner/reports");
   revalidatePath("/owner");
+  revalidatePath("/owner/trainer-clients");
 }
 
 // Staff record that a member bought a package. A membership starts on the
@@ -51,6 +52,13 @@ export async function sellPackage(formData: FormData): Promise<Result> {
   const endsOn = isMembership ? endsOnInput || membershipEnd(startsOn, pkg.months, pkg.bonus_months, pkg.bonus_days) : null;
   if (isMembership && endsOn! < startsOn) return { error: "วันหมดอายุต้องไม่ก่อนวันเริ่ม" };
 
+  // A repeat purchase of the same kind counts as a renewal in the sales figures.
+  const { count: earlier } = await supabase
+    .from("member_purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", memberId)
+    .eq("kind", pkg.kind);
+
   const { error } = await supabase.from("member_purchases").insert({
     branch_id: staffer.branch_id,
     member_id: memberId,
@@ -64,6 +72,7 @@ export async function sellPackage(formData: FormData): Promise<Result> {
     starts_on: isMembership ? startsOn : null,
     ends_on: endsOn,
     pt_sessions: isMembership ? 0 : pkg.sessions + pkg.bonus_sessions,
+    is_renewal: (earlier ?? 0) > 0,
     note,
     created_by: staffer.id,
   });
@@ -71,6 +80,10 @@ export async function sellPackage(formData: FormData): Promise<Result> {
 
   if (isMembership) {
     await supabase.from("members").update({ plan: pkg.name, status: "active" }).eq("id", memberId);
+  } else {
+    // The trainer who will look after these hours.
+    const trainerId = String(formData.get("pt_trainer_id") || "");
+    if (trainerId) await supabase.from("members").update({ pt_trainer_id: trainerId }).eq("id", memberId);
   }
 
   refresh(memberId);
@@ -107,7 +120,10 @@ export async function updateMemberDetails(formData: FormData): Promise<Result> {
   if (!memberId || !name) return { error: "กรอกชื่อสมาชิก" };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("members").update({ name, phone: phone || null }).eq("id", memberId);
+  const { error } = await supabase
+    .from("members")
+    .update({ name, phone: phone || null, pt_trainer_id: String(formData.get("pt_trainer_id") || "") || null })
+    .eq("id", memberId);
   if (error) return { error: error.message };
   refresh(memberId);
   return { success: true };

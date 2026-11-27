@@ -129,6 +129,18 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
             </Field>
           </>
         )}
+        {pkg?.kind === "pt" && (
+          <Field label="เทรนเนอร์ที่ดูแล">
+            <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""}>
+              <option value="">ยังไม่ระบุ</option>
+              {team.filter((t) => t.role === "trainer").map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <Field label="ผู้ขาย">
           <Select name="sold_by" defaultValue={currentUserId}>
             <option value="">ไม่ระบุ</option>
@@ -167,7 +179,9 @@ function PurchaseRow({ purchase, memberId, sellerName, isOwner }: { purchase: Me
     <div className="border-t border-border bg-panel px-4 py-3 first:border-t-0">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <div className="min-w-[150px] flex-1">
-          <div className="font-body text-[13.5px] font-medium text-text-hi">{purchase.package_name}</div>
+          <div className="font-body text-[13.5px] font-medium text-text-hi">
+            {purchase.package_name} <span className="ml-1 text-xs font-normal text-text-faint">{purchase.is_renewal ? "ซื้อซ้ำ" : "ซื้อครั้งแรก"}</span>
+          </div>
           <div className="text-xs text-text-faint">
             ซื้อ {formatDateTh(purchase.purchased_on)} · {PAYMENT_LABEL[purchase.payment_method]}
             {sellerName ? ` · ขายโดย ${sellerName}` : ""}
@@ -281,12 +295,22 @@ export function MemberDetailClient({
       >
         <h2 className="m-0 mb-3 font-heading text-[15px] text-text-hi">ข้อมูลติดต่อ</h2>
         <input type="hidden" name="member_id" value={member.id} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr_auto] sm:items-end">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr_1fr_auto] sm:items-end">
           <Field label="ชื่อ-นามสกุล">
             <Input name="name" defaultValue={member.name} required />
           </Field>
           <Field label="เบอร์โทร (ใช้ตอนสแกนเช็กอิน)">
             <Input name="phone" type="tel" inputMode="tel" defaultValue={member.phone ?? ""} />
+          </Field>
+          <Field label="เทรนเนอร์ที่ดูแล PT">
+            <Select name="pt_trainer_id" defaultValue={member.pt_trainer_id ?? ""}>
+              <option value="">ยังไม่ระบุ</option>
+              {team.filter((t) => t.role === "trainer").map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Button type="submit" disabled={pending}>
             บันทึก

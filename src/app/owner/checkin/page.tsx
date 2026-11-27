@@ -15,7 +15,7 @@ export default async function CheckInPage() {
     supabase.from("members").select("*").eq("branch_id", branchId).eq("status", "active").order("name"),
     supabase
       .from("checkins")
-      .select("id, checked_in_at, member:members(id, name, membership_expires_on)")
+      .select("*, member:members(id, name, membership_expires_on)")
       .eq("branch_id", branchId)
       .gte("checked_in_at", startOfDay.toISOString())
       .order("checked_in_at", { ascending: false }),

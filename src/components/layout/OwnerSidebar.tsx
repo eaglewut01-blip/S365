@@ -12,6 +12,7 @@ import {
   Globe,
   Package,
   CalendarClock,
+  Contact,
 } from "lucide-react";
 import { PortalNav, type NavItem } from "./PortalNav";
 
@@ -21,6 +22,7 @@ const baseItems: NavItem[] = [
   { href: "/owner/checkin", label: "เช็คอิน", icon: ScanLine },
   { href: "/owner/packages", label: "แพ็กเกจ", icon: Package },
   { href: "/owner/trainer-schedule", label: "ตารางเทรนเนอร์", icon: CalendarClock },
+  { href: "/owner/trainer-clients", label: "ลูกค้า PT", icon: Contact },
   { href: "/owner/schedule", label: "ตารางคลาส", icon: CalendarDays },
   { href: "/owner/pt-sessions", label: "เซสชัน PT", icon: ClipboardCheck },
   { href: "/owner/billing", label: "การขาย", icon: Receipt },

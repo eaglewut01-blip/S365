@@ -43,8 +43,16 @@ export default async function SalesPage() {
         <>
           <div className="mb-[22px] flex flex-wrap gap-3.5">
             <StatTile label="ยอดขายเดือนนี้" value={formatBaht(sum(thisMonth))} sub={`${thisMonth.length} รายการ`} tone="mint" />
-            <StatTile label="สมาชิก เดือนนี้" value={formatBaht(sum(thisMonth.filter((s) => s.kind === "membership")))} />
-            <StatTile label="PT เดือนนี้" value={formatBaht(sum(thisMonth.filter((s) => s.kind === "pt")))} />
+            <StatTile
+              label="สมาชิก เดือนนี้"
+              value={formatBaht(sum(thisMonth.filter((s) => s.kind === "membership")))}
+              sub={`ใหม่ ${formatBaht(sum(thisMonth.filter((s) => s.kind === "membership" && !s.is_renewal)))} · ซื้อซ้ำ ${formatBaht(sum(thisMonth.filter((s) => s.kind === "membership" && s.is_renewal)))}`}
+            />
+            <StatTile
+              label="PT เดือนนี้"
+              value={formatBaht(sum(thisMonth.filter((s) => s.kind === "pt")))}
+              sub={`ใหม่ ${formatBaht(sum(thisMonth.filter((s) => s.kind === "pt" && !s.is_renewal)))} · ซื้อซ้ำ ${formatBaht(sum(thisMonth.filter((s) => s.kind === "pt" && s.is_renewal)))}`}
+            />
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border">
@@ -65,7 +73,9 @@ export default async function SalesPage() {
                   </Link>
                   <div>{s.package_name}</div>
                   <div>
-                    <Badge tone={s.kind === "pt" ? "due" : "active"}>{s.kind === "pt" ? "PT" : "สมาชิก"}</Badge>
+                    <Badge tone={s.kind === "pt" ? "due" : "active"}>
+                      {s.kind === "pt" ? "PT" : "สมาชิก"} {s.is_renewal ? "ซื้อซ้ำ" : "ใหม่"}
+                    </Badge>
                   </div>
                   <div className="text-text-hi">
                     {formatBaht(Number(s.amount))}

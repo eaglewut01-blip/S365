@@ -67,6 +67,19 @@ alter table public.members add column if not exists line_user_id text;
 create unique index if not exists members_line_user_idx on public.members (line_user_id) where line_user_id is not null;
 create index if not exists members_expiry_idx on public.members (branch_id, membership_expires_on);
 
+-- The trainer who looks after this member's PT, so the manager can see each
+-- trainer's clients and who is about to run out of hours.
+alter table public.members add column if not exists pt_trainer_id uuid references public.profiles (id) on delete set null;
+create index if not exists members_pt_trainer_idx on public.members (pt_trainer_id) where pt_trainer_id is not null;
+
+-- A repeat purchase of the same kind (the "RN" rows in the gym's old sheets).
+alter table public.member_purchases add column if not exists is_renewal boolean not null default false;
+
+-- What the member came to do on this visit; they pick it when checking in.
+alter table public.checkins add column if not exists activity text;
+alter table public.checkins drop constraint if exists checkins_activity_check;
+alter table public.checkins add constraint checkins_activity_check check (activity is null or activity in ('weights', 'cardio', 'class'));
+
 -- The secret printed inside the front-desk QR code.
 alter table public.branches add column if not exists checkin_token text;
 create unique index if not exists branches_checkin_token_idx on public.branches (checkin_token) where checkin_token is not null;
@@ -191,9 +204,11 @@ grant execute on function public.my_promotions() to authenticated;
 -- self_checkin: a member scans the front-desk QR and enters the phone number
 -- they registered with. Open to visitors who are not signed in, so it answers
 -- only for a valid QR secret and gives back the first name and dates, nothing
--- else. Scanning again within three hours does not add another visit.
+-- else. Scanning again within three hours does not add another visit; it only
+-- updates what they said they came to do.
 -- ----------------------------------------------------------------------------
-create or replace function public.self_checkin(p_token text, p_phone text)
+drop function if exists public.self_checkin(text, text);
+create or replace function public.self_checkin(p_token text, p_phone text, p_activity text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -208,6 +223,7 @@ declare
   v_now timestamptz := now();
   v_today date := (now() at time zone 'Asia/Bangkok')::date;
   v_new boolean := false;
+  v_activity text := case when p_activity in ('weights', 'cardio', 'class') then p_activity end;
 begin
   if coalesce(p_token, '') = '' then
     return jsonb_build_object('ok', false, 'reason', 'bad_link');
@@ -241,10 +257,12 @@ begin
   select max(checked_in_at) into v_last from public.checkins where member_id = v_member.id;
 
   if v_last is null or v_last < v_now - interval '3 hours' then
-    insert into public.checkins (member_id, branch_id, checked_in_at) values (v_member.id, v_branch, v_now);
+    insert into public.checkins (member_id, branch_id, checked_in_at, activity) values (v_member.id, v_branch, v_now, v_activity);
     update public.members set last_visit = v_today, visit_count = visit_count + 1 where id = v_member.id;
     v_last := v_now;
     v_new := true;
+  elsif v_activity is not null then
+    update public.checkins set activity = v_activity where member_id = v_member.id and checked_in_at = v_last;
   end if;
 
   return jsonb_build_object(
@@ -252,6 +270,7 @@ begin
     'new', v_new,
     'name', split_part(btrim(v_member.name), ' ', 1),
     'checked_in_at', v_last,
+    'activity', (select activity from public.checkins where member_id = v_member.id and checked_in_at = v_last limit 1),
     'expires_on', v_member.membership_expires_on,
     'days_left', v_member.membership_expires_on - v_today,
     'frozen', v_member.status = 'frozen',
@@ -262,8 +281,8 @@ begin
 end;
 $$;
 
-revoke all on function public.self_checkin(text, text) from public;
-grant execute on function public.self_checkin(text, text) to anon, authenticated;
+revoke all on function public.self_checkin(text, text, text) from public;
+grant execute on function public.self_checkin(text, text, text) to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- trainer_slots: each trainer fills in their own day, hour by hour, so the

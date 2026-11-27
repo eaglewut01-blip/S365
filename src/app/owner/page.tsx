@@ -6,6 +6,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { Badge } from "@/components/ui/Badge";
 import { daysAgo, todayDateLabelTh } from "@/lib/format";
 import { expiryLabel, expiryState, startOfTodayBangkok, todayBangkok } from "@/lib/dates";
+import { PT_LOW_HOURS, WORK_HOURS } from "@/lib/labels";
 import type { Member } from "@/types/database";
 
 export default async function OverviewPage() {
@@ -16,7 +17,7 @@ export default async function OverviewPage() {
   const startOfDay = startOfTodayBangkok();
   const todayDow = new Date(`${todayBangkok()}T12:00:00Z`).getUTCDay();
 
-  const [{ data: members }, { data: classes }, { count: checkinsToday }] = await Promise.all([
+  const [{ data: members }, { data: classes }, { count: checkinsToday }, { data: trainers }, { data: slotsToday }] = await Promise.all([
     supabase.from("members").select("*").eq("branch_id", branchId ?? ""),
     supabase
       .from("classes")
@@ -28,6 +29,8 @@ export default async function OverviewPage() {
       .select("id", { count: "exact", head: true })
       .eq("branch_id", branchId ?? "")
       .gte("checked_in_at", startOfDay.toISOString()),
+    supabase.from("profiles").select("id, full_name").eq("branch_id", branchId ?? "").eq("role", "trainer").order("full_name"),
+    supabase.from("trainer_slots").select("trainer_id, kind").eq("branch_id", branchId ?? "").eq("work_date", todayBangkok()),
   ]);
 
   const list = (members ?? []) as Member[];
@@ -36,7 +39,32 @@ export default async function OverviewPage() {
   const expiringSoon = current
     .filter((m) => expiryState(m.membership_expires_on).state === "soon")
     .sort((a, b) => (a.membership_expires_on ?? "").localeCompare(b.membership_expires_on ?? ""));
-  const ptLow = current.filter((m) => m.pt_total > 0 && m.pt_remaining <= 2);
+  const ptLow = current.filter((m) => m.pt_total > 0 && m.pt_remaining > 0 && m.pt_remaining <= PT_LOW_HOURS);
+  const trainerNames = new Map((trainers ?? []).map((t) => [t.id, t.full_name]));
+  const ptUnassigned = current.filter((m) => m.pt_remaining > 0 && !(m.pt_trainer_id && trainerNames.has(m.pt_trainer_id)));
+  const filledToday = new Set((slotsToday ?? []).map((s) => s.trainer_id));
+  const notFilled = (trainers ?? []).filter((t) => !filledToday.has(t.id));
+  const freeHours = new Map<string, number>();
+  (slotsToday ?? []).forEach((s) => {
+    if (s.kind === "free") freeHours.set(s.trainer_id, (freeHours.get(s.trainer_id) ?? 0) + 1);
+  });
+  const filledHours = new Map<string, number>();
+  (slotsToday ?? []).forEach((s) => filledHours.set(s.trainer_id, (filledHours.get(s.trainer_id) ?? 0) + 1));
+  // Full means every hour of the day is filled in and none of them is free.
+  const fullToday = (trainers ?? []).filter((t) => (filledHours.get(t.id) ?? 0) >= WORK_HOURS.length && !freeHours.get(t.id));
+  // PT clients about to run out, counted per trainer, for the alerts box.
+  const lowByTrainer = new Map<string, number>();
+  ptLow.forEach((m) => {
+    const name = (m.pt_trainer_id && trainerNames.get(m.pt_trainer_id)) || "ยังไม่ระบุเทรนเนอร์";
+    lowByTrainer.set(name, (lowByTrainer.get(name) ?? 0) + 1);
+  });
+  const alerts: { text: string; href: string }[] = [
+    ...(expiringSoon.length ? [{ text: `สมาชิก ${expiringSoon.length} คนจะหมดอายุใน 7 วัน`, href: "/owner/members" }] : []),
+    ...[...lowByTrainer].map(([name, n]) => ({ text: `ลูกค้า PT ของ ${name} ใกล้หมด ${n} คน`, href: "/owner/trainer-clients" })),
+    ...(ptUnassigned.length ? [{ text: `ลูกค้า PT ${ptUnassigned.length} คนยังไม่ได้ระบุเทรนเนอร์`, href: "/owner/trainer-clients" }] : []),
+    ...(notFilled.length ? [{ text: `ยังไม่ลงตารางวันนี้: ${notFilled.map((t) => t.full_name).join(", ")}`, href: "/owner/trainer-schedule" }] : []),
+    ...(fullToday.length ? [{ text: `ตารางวันนี้เต็มแล้ว: ${fullToday.map((t) => t.full_name).join(", ")}`, href: "/owner/trainer-schedule" }] : []),
+  ];
   const atRisk = active.filter((m) => daysAgo(m.last_visit) >= 14).slice(0, 6);
 
   return (
@@ -49,10 +77,27 @@ export default async function OverviewPage() {
         <StatTile label="เช็คอินวันนี้" value={checkinsToday ?? 0} sub="อัปเดตแบบเรียลไทม์" tone="mint" />
         <StatTile label="คลาสวันนี้" value={classes?.length ?? 0} sub="ดูตารางเต็ม →" />
         <StatTile label="ใกล้หมดอายุใน 7 วัน" value={expiringSoon.length} sub="ควรทักชวนต่ออายุ" tone="amber" />
-        <StatTile label="PT ใกล้หมด" value={ptLow.length} sub="เหลือไม่เกิน 2 ชั่วโมง" tone="amber" />
+        <StatTile label="PT ใกล้หมด" value={ptLow.length} sub={`เหลือไม่เกิน ${PT_LOW_HOURS} ชั่วโมง`} tone="amber" />
       </div>
 
-      <div className="mt-6 flex flex-col gap-4 lg:flex-row">
+      <div className="mt-6 rounded-xl border border-border bg-panel p-[18px]">
+        <h3 className="m-0 mb-2 font-heading text-[15px] text-text-hi">แจ้งเตือน สิ่งที่ต้องตามวันนี้</h3>
+        {alerts.length === 0 && <div className="text-[13px] text-text-faint">ไม่มีเรื่องที่ต้องตามในตอนนี้</div>}
+        <div>
+          {alerts.map((alert) => (
+            <Link
+              key={alert.text}
+              href={alert.href}
+              className="flex items-center justify-between gap-3 border-t border-border py-2.5 text-[13.5px] text-text-hi no-underline first:border-t-0 hover:text-volt"
+            >
+              <span>{alert.text}</span>
+              <ChevronRight size={14} className="flex-shrink-0 text-text-faint" />
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4 lg:flex-row">
         <div className="flex-[1.4] rounded-xl border border-border bg-panel p-[18px]">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="m-0 font-heading text-[15px] text-text-hi">คลาสวันนี้</h3>

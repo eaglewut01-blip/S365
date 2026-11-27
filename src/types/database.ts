@@ -38,6 +38,7 @@ export interface Member {
   pt_remaining: number;
   membership_expires_on: string | null;
   line_user_id: string | null;
+  pt_trainer_id: string | null;
   created_at: string;
 }
 
@@ -79,6 +80,8 @@ export interface PtSession {
   resolved_at: string | null;
 }
 
+export type VisitActivity = "weights" | "cardio" | "class";
+
 export type PackageKind = "membership" | "pt";
 export type PaymentMethod = "transfer" | "credit" | "cash" | "other";
 
@@ -112,6 +115,7 @@ export interface MemberPurchase {
   starts_on: string | null;
   ends_on: string | null;
   pt_sessions: number;
+  is_renewal: boolean;
   note: string | null;
   created_at: string;
 }
