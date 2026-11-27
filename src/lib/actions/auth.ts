@@ -10,6 +10,7 @@ const ROLE_HOME: Record<Role, string> = {
   staff: "/owner",
   trainer: "/trainer",
   member: "/member",
+  pending: "/pending",
 };
 
 export async function login(_prevState: { error: string } | null, formData: FormData) {

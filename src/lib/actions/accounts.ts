@@ -168,3 +168,37 @@ export async function setStaffPassword(userId: string, password: string): Promis
   if (error) return { error: error.message };
   return { success: true };
 }
+
+async function pendingApplicant(userId: string, ownerBranch: string | null) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles").select("id, role, branch_id").eq("id", userId).maybeSingle();
+  return data && data.role === "pending" && data.branch_id === ownerBranch ? data : null;
+}
+
+// Owner only: let someone who signed up on their own into the system.
+export async function approveApplicant(userId: string, role: "trainer" | "staff"): Promise<{ error?: string; success?: boolean }> {
+  const owner = await requireRole("owner");
+  if (role !== "trainer" && role !== "staff") return { error: "เลือกบทบาท" };
+  if (!(await pendingApplicant(userId, owner.branch_id))) return { error: "ไม่พบคำขอนี้" };
+
+  // profiles.role is not writable through row level security by design.
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ role }).eq("id", userId).eq("role", "pending");
+  if (error) return { error: error.message };
+
+  revalidatePath("/owner/team");
+  return { success: true };
+}
+
+// Owner only: turn down a sign-up and remove the account.
+export async function rejectApplicant(userId: string): Promise<{ error?: string; success?: boolean }> {
+  const owner = await requireRole("owner");
+  if (!(await pendingApplicant(userId, owner.branch_id))) return { error: "ไม่พบคำขอนี้" };
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/owner/team");
+  return { success: true };
+}

@@ -59,7 +59,12 @@ export default async function OverviewPage() {
     const name = (m.pt_trainer_id && trainerNames.get(m.pt_trainer_id)) || "ยังไม่ระบุเทรนเนอร์";
     lowByTrainer.set(name, (lowByTrainer.get(name) ?? 0) + 1);
   });
+  const { count: waitingCount } =
+    profile.role === "owner"
+      ? await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("branch_id", branchId ?? "").eq("role", "pending")
+      : { count: 0 };
   const alerts: { text: string; href: string }[] = [
+    ...(waitingCount ? [{ text: `มีทีมงานสมัครใหม่รออนุมัติ ${waitingCount} คน`, href: "/owner/team" }] : []),
     ...(expiringSoon.length ? [{ text: `สมาชิก ${expiringSoon.length} คนจะหมดอายุใน 7 วัน`, href: "/owner/members" }] : []),
     ...[...lowByTrainer].map(([name, n]) => ({ text: `ลูกค้า PT ของ ${name} ใกล้หมด ${n} คน`, href: "/owner/trainer-clients" })),
     ...(ptUnassigned.length ? [{ text: `ลูกค้า PT ${ptUnassigned.length} คนยังไม่ได้ระบุเทรนเนอร์`, href: "/owner/trainer-clients" }] : []),

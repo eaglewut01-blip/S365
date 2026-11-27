@@ -7,6 +7,7 @@ const ROLE_HOME: Record<Role, string> = {
   staff: "/owner",
   trainer: "/trainer",
   member: "/member",
+  pending: "/pending",
 };
 
 const PUBLIC_PATHS = ["/login"];

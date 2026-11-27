@@ -11,6 +11,7 @@ const ROLE_HOME: Record<Role, string> = {
   staff: "/owner",
   trainer: "/trainer",
   member: "/member",
+  pending: "/pending",
 };
 
 const MIN_PASSWORD_LENGTH = 8;

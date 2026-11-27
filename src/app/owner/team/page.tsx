@@ -30,5 +30,12 @@ export default async function TeamPage() {
     adminProblem = e instanceof Error ? e.message : "unknown";
   }
 
-  return <TeamClient team={(team ?? []) as Profile[]} logins={logins} adminProblem={adminProblem} />;
+  const { data: waiting } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("branch_id", owner.branch_id ?? "")
+    .eq("role", "pending")
+    .order("created_at");
+
+  return <TeamClient team={(team ?? []) as Profile[]} waiting={(waiting ?? []) as Profile[]} logins={logins} adminProblem={adminProblem} />;
 }

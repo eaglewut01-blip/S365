@@ -1,4 +1,5 @@
-export type Role = "owner" | "staff" | "trainer" | "member";
+// "pending": signed up on their own and waiting for the owner to approve.
+export type Role = "owner" | "staff" | "trainer" | "member" | "pending";
 
 export type MemberStatus = "active" | "frozen" | "cancelled";
 export type BillingStatus = "paid" | "due" | "overdue";

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { createStaffAccount, createStaffLogin, createStaffLoginsBulk, setStaffPassword } from "@/lib/actions/accounts";
+import { approveApplicant, createStaffAccount, createStaffLogin, createStaffLoginsBulk, rejectApplicant, setStaffPassword } from "@/lib/actions/accounts";
 import type { Profile } from "@/types/database";
 
 type Message = { error?: string; success?: boolean } | null;
@@ -53,7 +53,53 @@ function PasswordButton({ userId, name }: { userId: string; name: string }) {
   );
 }
 
-export function TeamClient({ team, logins, adminProblem }: { team: Profile[]; logins: Record<string, string>; adminProblem: string }) {
+function WaitingRow({ person, login }: { person: Profile; login: string }) {
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+  const run = (work: () => Promise<{ error?: string }>) => startTransition(async () => setError((await work()).error ?? ""));
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border px-4 py-3 first:border-t-0">
+      <div className="min-w-[150px] flex-1">
+        <div className="text-[13.5px] font-medium text-text-hi">{person.full_name}</div>
+        <div className="text-xs text-text-lo">
+          ไอดี {login || "-"}
+          {person.phone ? ` · ${person.phone}` : ""}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" disabled={pending} onClick={() => run(() => approveApplicant(person.id, "trainer"))}>
+          อนุมัติเป็นเทรนเนอร์
+        </Button>
+        <Button disabled={pending} onClick={() => run(() => approveApplicant(person.id, "staff"))}>
+          อนุมัติเป็นพนักงาน
+        </Button>
+        <Button
+          variant="danger"
+          disabled={pending}
+          onClick={() => {
+            if (window.confirm(`ปฏิเสธและลบคำขอของ ${person.full_name}`)) run(() => rejectApplicant(person.id));
+          }}
+        >
+          ปฏิเสธ
+        </Button>
+      </div>
+      {error && <div className="w-full text-[12.5px] text-coral">{error}</div>}
+    </div>
+  );
+}
+
+export function TeamClient({
+  team,
+  waiting,
+  logins,
+  adminProblem,
+}: {
+  team: Profile[];
+  waiting: Profile[];
+  logins: Record<string, string>;
+  adminProblem: string;
+}) {
   const [login, loginAction, loginPending] = useActionState(async (_prev: Message, formData: FormData) => createStaffLogin(formData), null);
   const [bulk, bulkAction, bulkPending] = useActionState(
     async (_prev: { results: { line: string; error?: string }[] } | null, formData: FormData) => createStaffLoginsBulk(formData),
@@ -70,6 +116,18 @@ export function TeamClient({ team, logins, adminProblem }: { team: Profile[]; lo
           ระบบสร้างบัญชีให้ทีมงานยังไม่ได้ เพราะค่า <code>SUPABASE_SERVICE_ROLE_KEY</code> ใน Vercel ไม่ถูกต้องหรือยังไม่ได้ใส่ ({adminProblem})
         </div>
       )}
+
+      <section className={`mb-4 overflow-hidden rounded-xl border bg-panel ${waiting.length ? "border-amber" : "border-border"}`}>
+        <div className="px-4 pt-3.5 pb-2.5">
+          <h2 className="m-0 font-heading text-[15px] text-text-hi">รออนุมัติ {waiting.length} คน</h2>
+          <p className="mt-1 mb-0 text-[12.5px] text-text-lo">
+            ทีมงานสมัครเองได้ที่ปุ่ม สมัครบัญชีทีมงาน ในหน้า /login คนที่ยังไม่อนุมัติจะเข้าใช้งานอะไรไม่ได้ อนุมัติเฉพาะคนที่คุณรู้จัก
+          </p>
+        </div>
+        {waiting.map((person) => (
+          <WaitingRow key={person.id} person={person} login={logins[person.id] ?? ""} />
+        ))}
+      </section>
 
       <form action={loginAction} className="mb-4 rounded-xl border border-border bg-panel p-[18px]">
         <h2 className="m-0 mb-3 font-heading text-[15px] text-text-hi">สร้างบัญชีทีละคน</h2>

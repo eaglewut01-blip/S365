@@ -49,6 +49,13 @@ export default function LoginPage() {
           {pending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </Button>
 
+        <Link
+          href="/signup"
+          className="mt-2.5 block rounded-lg border border-border-strong px-3.5 py-2.5 text-center font-body text-[13.5px] font-semibold text-text-hi no-underline hover:bg-white/5"
+        >
+          สมัครบัญชีทีมงาน
+        </Link>
+
         <Link href="/forgot-password" className="mt-4 block text-center text-[12.5px] text-text-lo hover:text-text-hi">
           ลืมรหัสผ่าน
         </Link>

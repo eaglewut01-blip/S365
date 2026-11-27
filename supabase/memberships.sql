@@ -116,6 +116,12 @@ create policy "payment_proofs_owner_delete" on storage.objects for delete
     bucket_id = 'payment-proofs' and public.current_role() = 'owner' and (storage.foldername(name))[1] = public.current_branch()::text
   );
 
+-- Staff can sign up on their own; the account is "pending" and can open
+-- nothing until the owner approves it and gives it a real role.
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('owner', 'staff', 'trainer', 'member', 'pending'));
+
 -- The secret printed inside the front-desk QR code.
 alter table public.branches add column if not exists checkin_token text;
 create unique index if not exists branches_checkin_token_idx on public.branches (checkin_token) where checkin_token is not null;
