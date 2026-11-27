@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 import { CircleCheck, Dumbbell, HeartPulse, TriangleAlert, Users } from "lucide-react";
 import { selfCheckin, type CheckinResult } from "@/lib/actions/self-checkin";
 import { formatDateTh, formatTimeTh } from "@/lib/dates";
@@ -71,6 +71,8 @@ function Done({ result }: { result: Extract<CheckinResult, { ok: true }> }) {
         )}
       </div>
 
+      <p className="mt-3 mb-0 text-center text-[12.5px] text-text-faint">ครั้งหน้าสแกนแล้วกดปุ่มได้เลย ไม่ต้องกรอกเบอร์อีก</p>
+
       {result.promotions.map((promo, i) => (
         <div key={i} className="mt-3 rounded-2xl border border-volt bg-volt/10 p-5">
           <div className="font-body text-[11px] font-semibold tracking-[0.2em] text-volt">โปรโมชั่นสำหรับคุณ</div>
@@ -83,8 +85,50 @@ function Done({ result }: { result: Extract<CheckinResult, { ok: true }> }) {
   );
 }
 
+// The phone number last used on this device, so a returning member only
+// has to tap what they came to do. Kept in this browser only.
+const SAVED_KEY = "s365-checkin";
+type Saved = { phone: string; name: string };
+
+function readSaved(): Saved | null {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? "null");
+    return saved && typeof saved.phone === "string" && typeof saved.name === "string" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSaved(saved: Saved | null) {
+  try {
+    if (saved) window.localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+    else window.localStorage.removeItem(SAVED_KEY);
+  } catch {
+    // Private browsing: the member types their number each time.
+  }
+}
+
+const subscribe = () => () => {};
+
+// The saved number can only be read in the browser, so the form is drawn there.
 export function CheckinForm({ token }: { token: string }) {
-  const [result, formAction, pending] = useActionState(selfCheckin, null);
+  const inBrowser = useSyncExternalStore(subscribe, () => true, () => false);
+  return inBrowser ? <CheckinFormInner token={token} /> : <div className="h-[340px] w-full max-w-[400px]" />;
+}
+
+function CheckinFormInner({ token }: { token: string }) {
+  const [saved, setSaved] = useState(readSaved);
+  const [result, formAction, pending] = useActionState(async (prev: CheckinResult | null, formData: FormData) => {
+    const res = await selfCheckin(prev, formData);
+    if (res.ok) {
+      writeSaved({ phone: String(formData.get("phone") || ""), name: res.name });
+    } else if (res.reason === "not_found" || res.reason === "ask_staff" || res.reason === "bad_phone") {
+      // The saved number no longer matches a member: ask for it again.
+      writeSaved(null);
+      setSaved(null);
+    }
+    return res;
+  }, null);
 
   if (result?.ok) return <Done result={result} />;
 
@@ -92,23 +136,29 @@ export function CheckinForm({ token }: { token: string }) {
     <form action={formAction} className="w-full max-w-[400px] rounded-2xl border border-border bg-panel p-7">
       <div className="font-heading text-[32px] leading-none tracking-wide text-text-hi">S365</div>
       <div className="mt-[3px] font-body text-[11px] font-semibold tracking-[0.3em] text-volt">FITNESS</div>
-      <h1 className="m-0 mt-5 font-body text-[19px] font-semibold text-text-hi">เช็กอินเข้ายิม</h1>
+      <h1 className="m-0 mt-5 font-body text-[19px] font-semibold text-text-hi">
+        {token && saved ? `สวัสดีคุณ${saved.name}` : "เช็กอินเข้ายิม"}
+      </h1>
 
       {token ? (
         <>
           <input type="hidden" name="k" value={token} />
-          <label className="mt-4 block">
-            <span className="mb-1.5 block text-[13px] text-text-lo">เบอร์โทรที่ลงทะเบียนไว้</span>
-            <input
-              name="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel"
-              placeholder="08x-xxx-xxxx"
-              required
-              className="w-full rounded-xl border border-border bg-panel-raised px-4 py-3.5 font-body text-[20px] tracking-wide text-text-hi outline-none placeholder:text-text-faint focus:border-volt"
-            />
-          </label>
+          {saved ? (
+            <input type="hidden" name="phone" value={saved.phone} />
+          ) : (
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-[13px] text-text-lo">เบอร์โทรที่ลงทะเบียนไว้ (กรอกครั้งแรกครั้งเดียว)</span>
+              <input
+                name="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                placeholder="08x-xxx-xxxx"
+                required
+                className="w-full rounded-xl border border-border bg-panel-raised px-4 py-3.5 font-body text-[20px] tracking-wide text-text-hi outline-none placeholder:text-text-faint focus:border-volt"
+              />
+            </label>
+          )}
           {result && !result.ok && <div className="mt-3 text-[13.5px] leading-relaxed text-coral">{REASON[result.reason] ?? REASON.error}</div>}
           <div className="mt-5 text-[13px] text-text-lo">วันนี้มาเล่นอะไร กดเพื่อเช็กอิน</div>
           <div className="mt-2 grid grid-cols-3 gap-2.5">
@@ -130,6 +180,18 @@ export function CheckinForm({ token }: { token: string }) {
             })}
           </div>
           {pending && <div className="mt-3 text-center text-[13px] text-text-lo">กำลังเช็กอิน...</div>}
+          {saved && (
+            <button
+              type="button"
+              onClick={() => {
+                writeSaved(null);
+                setSaved(null);
+              }}
+              className="mt-5 block w-full cursor-pointer border-none bg-transparent text-center font-body text-[12.5px] text-text-faint underline hover:text-text-lo"
+            >
+              ไม่ใช่คุณ{saved.name} ใช้เบอร์อื่น
+            </button>
+          )}
         </>
       ) : (
         <p className="mt-3 mb-0 text-[14px] leading-relaxed text-text-lo">{REASON.bad_link}</p>
