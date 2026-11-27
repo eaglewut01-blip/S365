@@ -201,11 +201,31 @@ revoke all on function public.my_promotions() from public, anon;
 grant execute on function public.my_promotions() to authenticated;
 
 -- ----------------------------------------------------------------------------
+-- checkin_attempts: scans that were turned away (expired, on hold, no
+-- package), so the front desk sees them and nobody slips in on a dead
+-- membership.
+-- ----------------------------------------------------------------------------
+create table if not exists public.checkin_attempts (
+  id uuid primary key default gen_random_uuid(),
+  branch_id uuid not null references public.branches (id) on delete cascade,
+  member_id uuid not null references public.members (id) on delete cascade,
+  reason text not null check (reason in ('expired', 'frozen', 'no_package')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists checkin_attempts_branch_idx on public.checkin_attempts (branch_id, created_at desc);
+
+-- ----------------------------------------------------------------------------
 -- self_checkin: a member scans the front-desk QR and enters the phone number
 -- they registered with. Open to visitors who are not signed in, so it answers
 -- only for a valid QR secret and gives back the first name and dates, nothing
 -- else. Scanning again within three hours does not add another visit; it only
 -- updates what they said they came to do.
+--
+-- Who gets in: a membership that has not ended, or, for someone who never
+-- bought a membership, PT hours still left. An ended membership, a
+-- membership on hold, or no package at all is turned away and recorded in
+-- checkin_attempts for the front desk.
 -- ----------------------------------------------------------------------------
 drop function if exists public.self_checkin(text, text);
 create or replace function public.self_checkin(p_token text, p_phone text, p_activity text default null)
@@ -223,6 +243,7 @@ declare
   v_now timestamptz := now();
   v_today date := (now() at time zone 'Asia/Bangkok')::date;
   v_new boolean := false;
+  v_reason text;
   v_activity text := case when p_activity in ('weights', 'cardio', 'class') then p_activity end;
 begin
   if coalesce(p_token, '') = '' then
@@ -253,6 +274,29 @@ begin
     from public.members
    where branch_id = v_branch and status <> 'cancelled'
      and right(regexp_replace(coalesce(phone, ''), '\D', '', 'g'), 9) = right(v_digits, 9);
+
+  v_reason := case
+    when v_member.status = 'frozen' then 'frozen'
+    when v_member.membership_expires_on is not null and v_member.membership_expires_on < v_today then 'expired'
+    when v_member.membership_expires_on is null and v_member.pt_remaining <= 0 then 'no_package'
+  end;
+
+  if v_reason is not null then
+    -- One row per member and reason every five minutes is enough for the desk.
+    if not exists (
+      select 1 from public.checkin_attempts
+       where member_id = v_member.id and reason = v_reason and created_at > v_now - interval '5 minutes'
+    ) then
+      insert into public.checkin_attempts (branch_id, member_id, reason) values (v_branch, v_member.id, v_reason);
+    end if;
+    return jsonb_build_object(
+      'ok', false,
+      'reason', v_reason,
+      'name', split_part(btrim(v_member.name), ' ', 1),
+      'expires_on', v_member.membership_expires_on,
+      'promotions', public.promotions_for_member(v_member.id)
+    );
+  end if;
 
   select max(checked_in_at) into v_last from public.checkins where member_id = v_member.id;
 
@@ -311,6 +355,12 @@ alter table public.packages enable row level security;
 alter table public.member_purchases enable row level security;
 alter table public.promotions enable row level security;
 alter table public.trainer_slots enable row level security;
+alter table public.checkin_attempts enable row level security;
+
+-- checkin_attempts: written only by self_checkin(); staff read their branch
+drop policy if exists "attempts_staff_select" on public.checkin_attempts;
+create policy "attempts_staff_select" on public.checkin_attempts for select
+  to authenticated using (public.is_staff() and branch_id = public.current_branch());
 
 -- packages: everyone on the team can read; only the owner creates and edits
 drop policy if exists "packages_team_select" on public.packages;

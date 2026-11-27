@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { OwnerSidebar } from "@/components/layout/OwnerSidebar";
+import { DoorWatcher } from "@/components/layout/DoorWatcher";
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireRole("owner", "staff");
@@ -20,6 +21,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen flex-col bg-base md:flex-row print:block print:bg-white">
       <OwnerSidebar branchName={branchName} isOwner={profile.role === "owner"} />
       <div className="min-w-0 flex-1 overflow-y-auto print:overflow-visible">{children}</div>
+      <DoorWatcher />
     </div>
   );
 }

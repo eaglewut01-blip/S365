@@ -8,6 +8,14 @@ import type { VisitActivity } from "@/types/database";
 
 export type CheckinResult =
   | { ok: false; reason: "bad_link" | "bad_phone" | "not_found" | "ask_staff" | "error" }
+  // Recognised, but not let in: the front desk is told about these.
+  | {
+      ok: false;
+      reason: "expired" | "frozen" | "no_package";
+      name: string;
+      expires_on: string | null;
+      promotions: { title: string; body: string }[];
+    }
   | {
       ok: true;
       new: boolean;

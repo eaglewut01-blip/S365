@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useSyncExternalStore } from "react";
-import { CircleCheck, Dumbbell, HeartPulse, TriangleAlert, Users } from "lucide-react";
+import { CircleCheck, CircleX, Dumbbell, HeartPulse, Users } from "lucide-react";
 import { selfCheckin, type CheckinResult } from "@/lib/actions/self-checkin";
 import { formatDateTh, formatTimeTh } from "@/lib/dates";
 import { ACTIVITIES, ACTIVITY_LABEL } from "@/lib/labels";
@@ -16,6 +16,43 @@ const REASON: Record<string, string> = {
   ask_staff: "เบอร์นี้ตรงกับสมาชิกมากกว่าหนึ่งคน กรุณาแจ้งพนักงานที่เคาน์เตอร์",
   error: "ระบบขัดข้อง ลองใหม่อีกครั้ง หรือแจ้งพนักงานที่เคาน์เตอร์",
 };
+
+type Blocked = Extract<CheckinResult, { reason: "expired" | "frozen" | "no_package" }>;
+
+const BLOCKED_TEXT: Record<Blocked["reason"], string> = {
+  expired: "สมาชิกของคุณหมดอายุแล้ว จึงยังเช็กอินไม่ได้ ติดต่อเคาน์เตอร์เพื่อต่ออายุได้เลย",
+  frozen: "สมาชิกของคุณอยู่ระหว่างพักการใช้ จึงยังเช็กอินไม่ได้ กรุณาแจ้งพนักงานที่เคาน์เตอร์",
+  no_package: "ยังไม่พบแพ็กเกจสมาชิกของคุณ จึงยังเช็กอินไม่ได้ กรุณาติดต่อเคาน์เตอร์",
+};
+
+function PromotionCards({ promotions }: { promotions: { title: string; body: string }[] }) {
+  return promotions.map((promo, i) => (
+    <div key={i} className="mt-3 rounded-2xl border border-volt bg-volt/10 p-5">
+      <div className="font-body text-[11px] font-semibold tracking-[0.2em] text-volt">โปรโมชั่นสำหรับคุณ</div>
+      <div className="mt-1.5 font-body text-[17px] font-semibold text-text-hi">{promo.title}</div>
+      {promo.body && <p className="mt-1.5 mb-0 whitespace-pre-line text-[13.5px] leading-relaxed text-text-lo">{promo.body}</p>}
+      <div className="mt-2.5 text-[12.5px] text-text-lo">สนใจแจ้งพนักงานที่เคาน์เตอร์ได้เลย</div>
+    </div>
+  ));
+}
+
+function TurnedAway({ result }: { result: Blocked }) {
+  return (
+    <div className="w-full max-w-[400px]">
+      <div className="rounded-2xl border border-coral bg-panel p-7 text-center">
+        <CircleX size={52} className="mx-auto text-coral" strokeWidth={1.8} />
+        <h1 className="m-0 mt-3 font-heading text-[28px] leading-tight tracking-wide text-text-hi">ยังเช็กอินไม่ได้</h1>
+        <p className="mt-2 mb-0 text-[15px] leading-relaxed text-text-lo">
+          คุณ{result.name} {BLOCKED_TEXT[result.reason]}
+        </p>
+        {result.reason === "expired" && result.expires_on && (
+          <p className="mt-2 mb-0 text-[13px] text-text-faint">หมดอายุเมื่อ {formatDateTh(result.expires_on)}</p>
+        )}
+      </div>
+      <PromotionCards promotions={result.promotions} />
+    </div>
+  );
+}
 
 function Done({ result }: { result: Extract<CheckinResult, { ok: true }> }) {
   const expired = result.days_left !== null && result.days_left < 0;
@@ -57,30 +94,11 @@ function Done({ result }: { result: Extract<CheckinResult, { ok: true }> }) {
           </div>
         </div>
 
-        {(expired || result.days_left === null || result.frozen) && (
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber bg-amber-bg px-4 py-3 text-left text-[13.5px] leading-relaxed text-text-hi">
-            <TriangleAlert size={16} className="mt-0.5 flex-shrink-0 text-amber" />
-            <span>
-              {result.frozen
-                ? "สมาชิกของคุณอยู่ระหว่างพักการใช้ กรุณาแจ้งพนักงานที่เคาน์เตอร์"
-                : expired
-                  ? "สมาชิกของคุณหมดอายุแล้ว กรุณาติดต่อเคาน์เตอร์เพื่อต่ออายุ"
-                  : "ยังไม่พบแพ็กเกจสมาชิกของคุณ กรุณาติดต่อเคาน์เตอร์"}
-            </span>
-          </div>
-        )}
       </div>
 
       <p className="mt-3 mb-0 text-center text-[12.5px] text-text-faint">ครั้งหน้าสแกนแล้วกดปุ่มได้เลย ไม่ต้องกรอกเบอร์อีก</p>
 
-      {result.promotions.map((promo, i) => (
-        <div key={i} className="mt-3 rounded-2xl border border-volt bg-volt/10 p-5">
-          <div className="font-body text-[11px] font-semibold tracking-[0.2em] text-volt">โปรโมชั่นสำหรับคุณ</div>
-          <div className="mt-1.5 font-body text-[17px] font-semibold text-text-hi">{promo.title}</div>
-          {promo.body && <p className="mt-1.5 mb-0 whitespace-pre-line text-[13.5px] leading-relaxed text-text-lo">{promo.body}</p>}
-          <div className="mt-2.5 text-[12.5px] text-text-lo">สนใจแจ้งพนักงานที่เคาน์เตอร์ได้เลย</div>
-        </div>
-      ))}
+      <PromotionCards promotions={result.promotions} />
     </div>
   );
 }
@@ -131,6 +149,9 @@ function CheckinFormInner({ token }: { token: string }) {
   }, null);
 
   if (result?.ok) return <Done result={result} />;
+  if (result && (result.reason === "expired" || result.reason === "frozen" || result.reason === "no_package")) {
+    return <TurnedAway result={result} />;
+  }
 
   return (
     <form action={formAction} className="w-full max-w-[400px] rounded-2xl border border-border bg-panel p-7">

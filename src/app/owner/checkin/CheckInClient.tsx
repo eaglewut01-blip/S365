@@ -16,12 +16,23 @@ export type CheckinRow = {
   member: { id: string; name: string; membership_expires_on?: string | null } | null;
 };
 
+export type AttemptRow = {
+  id: string;
+  created_at: string;
+  reason: "expired" | "frozen" | "no_package";
+  member: { id: string; name: string; membership_expires_on?: string | null } | null;
+};
+
+const ATTEMPT_LABEL = { expired: "สมาชิกหมดอายุ", frozen: "อยู่ระหว่างพักการใช้", no_package: "ไม่มีแพ็กเกจ" } as const;
+
 export function CheckInClient({
   members,
   checkins,
+  attempts,
 }: {
   members: Member[];
   checkins: CheckinRow[];
+  attempts: AttemptRow[];
 }) {
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
@@ -106,6 +117,31 @@ export function CheckInClient({
           </div>
         </div>
       </div>
+
+      {attempts.length > 0 && (
+        <div className="mb-4 rounded-xl border border-coral bg-panel p-[18px]">
+          <h3 className="m-0 mb-1 font-heading text-sm text-coral">สแกนแล้วเช็กอินไม่ได้ วันนี้ {attempts.length} ครั้ง</h3>
+          <p className="m-0 mb-2 text-xs text-text-faint">ระบบไม่ให้เข้าเอง ถ้าลูกค้าต่ออายุแล้ว พนักงานเช็กอินให้ได้จากช่องค้นหาด้านบน</p>
+          {attempts.map((a) => (
+            <div key={a.id} className="flex items-center justify-between gap-3 border-t border-border py-2 first:border-t-0">
+              <span className="text-[13.5px] text-text-hi">
+                {a.member ? (
+                  <Link href={`/owner/members/${a.member.id}`} className="text-text-hi no-underline hover:text-volt">
+                    {a.member.name}
+                  </Link>
+                ) : (
+                  "-"
+                )}
+                <span className="ml-2 text-xs text-coral">
+                  {ATTEMPT_LABEL[a.reason]}
+                  {a.reason === "expired" && a.member?.membership_expires_on ? ` · ${expiryLabel(a.member.membership_expires_on)}` : ""}
+                </span>
+              </span>
+              <span className="whitespace-nowrap text-[12.5px] text-text-faint">{formatTimeTh(a.created_at)} น.</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-panel p-[18px]">
         <h3 className="m-0 mb-3 font-heading text-sm text-text-hi">เช็คอินวันนี้</h3>
