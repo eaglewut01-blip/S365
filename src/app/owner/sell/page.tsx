@@ -34,6 +34,7 @@ export default async function SellPage() {
       packages={(packages.data ?? []) as Package[]}
       team={(team.data ?? []) as Pick<Profile, "id" | "full_name" | "role">[]}
       currentUserId={profile.id}
+      branchId={branchId}
       missingTables={Boolean(packages.error)}
     />
   );

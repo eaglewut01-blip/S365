@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { CircleCheck, Search } from "lucide-react";
+import { CircleCheck, Paperclip, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -10,6 +10,7 @@ import { recordSale, type SaleResult } from "@/lib/actions/purchases";
 import { expiryLabel, membershipEnd, suggestedStart, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
 import { PAYMENT_LABEL, packageTerms } from "@/lib/labels";
+import { uploadPaymentProof } from "@/lib/payment-proof";
 import type { Package, Profile } from "@/types/database";
 
 export type Customer = {
@@ -53,12 +54,14 @@ function SaleForm({
   packages,
   team,
   currentUserId,
+  branchId,
   onDone,
 }: {
   customers: Customer[];
   packages: Package[];
   team: TeamMember[];
   currentUserId: string;
+  branchId: string;
   onDone: (result: SaleResult) => void;
 }) {
   const [isNew, setIsNew] = useState(false);
@@ -76,6 +79,20 @@ function SaleForm({
   const [ptTyped, setPtTyped] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [proof, setProof] = useState<{ path: string; name: string } | null>(null);
+  const [proofState, setProofState] = useState<{ uploading?: boolean; error?: string }>({});
+
+  const attach = async (file: File | undefined) => {
+    if (!file) return;
+    setProofState({ uploading: true });
+    try {
+      setProof({ path: await uploadPaymentProof(branchId, file), name: file.name });
+      setProofState({});
+    } catch (e) {
+      setProof(null);
+      setProofState({ error: e instanceof Error ? e.message : "แนบไฟล์ไม่สำเร็จ" });
+    }
+  };
 
   const text = query.trim().toLowerCase();
   const digits = text.replace(/\D/g, "");
@@ -326,10 +343,40 @@ function SaleForm({
             <Input name="note" placeholder="เช่น โปรพิเศษ" />
           </Field>
         </div>
+
+        <div className="mt-4">
+          <div className="mb-1.5 text-[12.5px] text-text-lo">หลักฐานการชำระเงิน (ไม่บังคับ) เช่น สลิปโอนเงิน หรือใบเสร็จบัตร</div>
+          <input type="hidden" name="proof_path" value={proof?.path ?? ""} />
+          {proof ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-mint bg-panel-raised px-3.5 py-2.5 text-[13px]">
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-mint">
+                <Paperclip size={13} className="flex-shrink-0" /> <span className="truncate">แนบแล้ว: {proof.name}</span>
+              </span>
+              <button type="button" onClick={() => setProof(null)} className="cursor-pointer border-none bg-transparent p-0 text-[12.5px] text-text-lo underline hover:text-coral">
+                เอาออก
+              </button>
+            </div>
+          ) : (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-strong px-3.5 py-2.5 font-body text-[13.5px] font-semibold text-text-hi hover:bg-white/5">
+              <Paperclip size={14} /> {proofState.uploading ? "กำลังแนบ..." : "แนบรูปภาพ"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={proofState.uploading}
+                onChange={(e) => {
+                  void attach(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+          {proofState.error && <div className="mt-1.5 text-[12.5px] text-coral">แนบไฟล์ไม่สำเร็จ: {proofState.error}</div>}
+        </div>
       </Step>
 
       <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t border-border bg-base px-4 py-3 sm:mx-0 sm:px-0">
-        <Button type="submit" variant="primary" disabled={pending || (!sellMembership && !sellPt) || (!isNew && !customer)} className="px-6 py-2.5">
+        <Button type="submit" variant="primary" disabled={pending || Boolean(proofState.uploading) || (!sellMembership && !sellPt) || (!isNew && !customer)} className="px-6 py-2.5">
           {pending ? "กำลังบันทึก..." : "บันทึกการขาย"}
         </Button>
         <span className="font-body text-[15px] font-semibold text-text-hi">รวม {formatBaht(total)}</span>
@@ -344,12 +391,14 @@ export function SellClient({
   packages,
   team,
   currentUserId,
+  branchId,
   missingTables,
 }: {
   customers: Customer[];
   packages: Package[];
   team: TeamMember[];
   currentUserId: string;
+  branchId: string;
   missingTables: boolean;
 }) {
   const [done, setDone] = useState<SaleResult | null>(null);
@@ -395,7 +444,7 @@ export function SellClient({
           </div>
         </div>
       ) : (
-        <SaleForm key={round} customers={customers} packages={packages} team={team} currentUserId={currentUserId} onDone={setDone} />
+        <SaleForm key={round} customers={customers} packages={packages} team={team} currentUserId={currentUserId} branchId={branchId} onDone={setDone} />
       )}
     </div>
   );

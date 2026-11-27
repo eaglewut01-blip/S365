@@ -87,6 +87,35 @@ create unique index if not exists members_legacy_code_idx on public.members (bra
 alter table public.member_purchases add column if not exists legacy_code text;
 create unique index if not exists member_purchases_legacy_code_idx on public.member_purchases (legacy_code) where legacy_code is not null;
 
+-- A photo of the payment slip or card receipt for a sale, kept in a private
+-- Storage bucket under the branch's own folder.
+alter table public.member_purchases add column if not exists proof_path text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('payment-proofs', 'payment-proofs', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+  set public = false,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "payment_proofs_staff_read" on storage.objects;
+create policy "payment_proofs_staff_read" on storage.objects for select
+  to authenticated using (
+    bucket_id = 'payment-proofs' and public.is_staff() and (storage.foldername(name))[1] = public.current_branch()::text
+  );
+
+drop policy if exists "payment_proofs_staff_insert" on storage.objects;
+create policy "payment_proofs_staff_insert" on storage.objects for insert
+  to authenticated with check (
+    bucket_id = 'payment-proofs' and public.is_staff() and (storage.foldername(name))[1] = public.current_branch()::text
+  );
+
+drop policy if exists "payment_proofs_owner_delete" on storage.objects;
+create policy "payment_proofs_owner_delete" on storage.objects for delete
+  to authenticated using (
+    bucket_id = 'payment-proofs' and public.current_role() = 'owner' and (storage.foldername(name))[1] = public.current_branch()::text
+  );
+
 -- The secret printed inside the front-desk QR code.
 alter table public.branches add column if not exists checkin_token text;
 create unique index if not exists branches_checkin_token_idx on public.branches (checkin_token) where checkin_token is not null;

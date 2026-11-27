@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { Badge } from "@/components/ui/Badge";
+import { ProofLink } from "@/components/ProofLink";
 import { addMonths, formatDateTh, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
 import { PAYMENT_LABEL } from "@/lib/labels";
@@ -161,6 +162,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
                   <div className="text-text-hi">
                     {formatBaht(Number(s.amount))}
                     <div className="text-xs text-text-faint">{PAYMENT_LABEL[s.payment_method]}</div>
+                    {s.proof_path && <ProofLink purchaseId={s.id} />}
                   </div>
                   <div>{s.seller?.full_name ?? "-"}</div>
                 </div>
