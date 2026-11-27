@@ -222,10 +222,10 @@ create index if not exists checkin_attempts_branch_idx on public.checkin_attempt
 -- else. Scanning again within three hours does not add another visit; it only
 -- updates what they said they came to do.
 --
--- Who gets in: a membership that has not ended, or, for someone who never
--- bought a membership, PT hours still left. An ended membership, a
--- membership on hold, or no package at all is turned away and recorded in
--- checkin_attempts for the front desk.
+-- Who gets in: only a membership that has not ended. Membership and PT are
+-- sold separately, and PT hours alone do not open the door. An ended
+-- membership, a membership on hold, or no membership at all is turned away
+-- and recorded in checkin_attempts for the front desk.
 -- ----------------------------------------------------------------------------
 drop function if exists public.self_checkin(text, text);
 create or replace function public.self_checkin(p_token text, p_phone text, p_activity text default null)
@@ -278,7 +278,7 @@ begin
   v_reason := case
     when v_member.status = 'frozen' then 'frozen'
     when v_member.membership_expires_on is not null and v_member.membership_expires_on < v_today then 'expired'
-    when v_member.membership_expires_on is null and v_member.pt_remaining <= 0 then 'no_package'
+    when v_member.membership_expires_on is null then 'no_package'
   end;
 
   if v_reason is not null then
