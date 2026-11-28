@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { toLoginEmail } from "@/lib/staff-login";
+import { AFTER_LOGIN_COOKIE } from "@/lib/supabase/middleware";
 import type { Role } from "@/types/database";
 
 const ROLE_HOME: Record<Role, string> = {
@@ -36,6 +38,13 @@ export async function login(_prevState: { error: string } | null, formData: Form
     .single();
 
   const role = profile?.role as Role | undefined;
+
+  // They scanned the staff QR before signing in: finish the clock-in.
+  const jar = await cookies();
+  const after = jar.get(AFTER_LOGIN_COOKIE)?.value ?? "";
+  if (after) jar.delete(AFTER_LOGIN_COOKIE);
+  if (role && role !== "member" && role !== "pending" && /^\/work(\?[\w=&%.~-]*)?$/.test(after)) redirect(after);
+
   redirect(role ? ROLE_HOME[role] : "/login");
 }
 

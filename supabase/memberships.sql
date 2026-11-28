@@ -618,3 +618,78 @@ $$;
 
 revoke all on function public.void_pt_session(uuid) from public, anon;
 grant execute on function public.void_pt_session(uuid) to authenticated;
+
+-- ============================================================================
+-- Staff clock-in: a team member scans the staff QR at the gym with their own
+-- phone (already signed in) and the time they arrived is recorded, once a day.
+-- ============================================================================
+-- The QR secret lives apart from `branches`, which every signed-in account can
+-- read; only the owner can see or replace it.
+create table if not exists public.branch_secrets (
+  branch_id uuid primary key references public.branches (id) on delete cascade,
+  staff_token text
+);
+alter table public.branch_secrets enable row level security;
+drop policy if exists "branch_secrets_owner_all" on public.branch_secrets;
+create policy "branch_secrets_owner_all" on public.branch_secrets for all
+  to authenticated using (public.current_role() = 'owner' and branch_id = public.current_branch())
+  with check (public.current_role() = 'owner' and branch_id = public.current_branch());
+
+create table if not exists public.staff_attendance (
+  id uuid primary key default gen_random_uuid(),
+  branch_id uuid not null references public.branches (id) on delete cascade,
+  profile_id uuid not null references public.profiles (id) on delete cascade,
+  work_date date not null,
+  clocked_in_at timestamptz not null default now(),
+  unique (profile_id, work_date)
+);
+create index if not exists staff_attendance_day_idx on public.staff_attendance (branch_id, work_date);
+alter table public.staff_attendance enable row level security;
+
+-- Written only by clock_in(). Owner and staff read their branch; everyone reads their own.
+drop policy if exists "attendance_select" on public.staff_attendance;
+create policy "attendance_select" on public.staff_attendance for select
+  to authenticated using (profile_id = auth.uid() or (public.is_staff() and branch_id = public.current_branch()));
+drop policy if exists "attendance_owner_delete" on public.staff_attendance;
+create policy "attendance_owner_delete" on public.staff_attendance for delete
+  to authenticated using (public.current_role() = 'owner' and branch_id = public.current_branch());
+
+create or replace function public.clock_in(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile public.profiles%rowtype;
+  v_today date := (now() at time zone 'Asia/Bangkok')::date;
+  v_row public.staff_attendance%rowtype;
+  v_new boolean := false;
+begin
+  select * into v_profile from public.profiles where id = auth.uid();
+  if not found or v_profile.branch_id is null or v_profile.role not in ('owner', 'staff', 'trainer') then
+    return jsonb_build_object('ok', false, 'reason', 'not_allowed');
+  end if;
+  if coalesce(p_token, '') = '' or not exists (
+    select 1 from public.branch_secrets where branch_id = v_profile.branch_id and staff_token = p_token
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'bad_link');
+  end if;
+
+  -- The first scan of the day is the arrival time; later scans change nothing.
+  insert into public.staff_attendance (branch_id, profile_id, work_date)
+  values (v_profile.branch_id, v_profile.id, v_today)
+  on conflict (profile_id, work_date) do nothing
+  returning * into v_row;
+  if found then
+    v_new := true;
+  else
+    select * into v_row from public.staff_attendance where profile_id = v_profile.id and work_date = v_today;
+  end if;
+
+  return jsonb_build_object('ok', true, 'new', v_new, 'at', v_row.clocked_in_at, 'name', v_profile.full_name);
+end;
+$$;
+
+revoke all on function public.clock_in(text) from public, anon;
+grant execute on function public.clock_in(text) to authenticated;

@@ -11,6 +11,7 @@ const ROLE_HOME: Record<Role, string> = {
 };
 
 const PUBLIC_PATHS = ["/login"];
+export const AFTER_LOGIN_COOKIE = "s365_after_login";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -44,7 +45,14 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.search = "";
+    const redirect = NextResponse.redirect(url);
+    // Someone scanned the staff QR before signing in: bring them back to it
+    // after they sign in (see login in lib/actions/auth.ts).
+    if (path === "/work") {
+      redirect.cookies.set(AFTER_LOGIN_COOKIE, `/work${request.nextUrl.search}`, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", maxAge: 600, path: "/" });
+    }
+    return redirect;
   }
 
   if (user) {

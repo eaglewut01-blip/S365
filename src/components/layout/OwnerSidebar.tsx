@@ -1,19 +1,20 @@
 "use client";
 
 import {
-  LayoutGrid,
-  Users,
-  CalendarDays,
-  ScanLine,
-  Receipt,
   BarChart3,
-  ClipboardCheck,
-  UserCog,
-  Globe,
-  Package,
   CalendarClock,
+  CalendarDays,
+  ClipboardCheck,
   Contact,
+  Globe,
+  LayoutGrid,
+  Package,
+  Receipt,
+  ScanLine,
   ShoppingCart,
+  UserCheck,
+  UserCog,
+  Users,
 } from "lucide-react";
 import { PortalNav, type NavItem } from "./PortalNav";
 
@@ -28,6 +29,7 @@ const baseItems: NavItem[] = [
   { href: "/owner/schedule", label: "ตารางคลาส", icon: CalendarDays },
   { href: "/owner/pt-sessions", label: "เซสชัน PT", icon: ClipboardCheck },
   { href: "/owner/billing", label: "ยอดขาย", icon: Receipt },
+  { href: "/owner/attendance", label: "เข้างานพนักงาน", icon: UserCheck },
   { href: "/owner/reports", label: "รายงาน", icon: BarChart3 },
 ];
 
