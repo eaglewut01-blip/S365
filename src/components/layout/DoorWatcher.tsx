@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CircleCheck, CircleX, X } from "lucide-react";
+import { CircleCheck, CircleX, PenLine, X } from "lucide-react";
 import { doorEventsSince, type DoorEvent } from "@/lib/actions/door-events";
 import { expiryLabel, formatTimeTh } from "@/lib/dates";
 import { ACTIVITY_LABEL } from "@/lib/labels";
@@ -57,7 +57,7 @@ export function DoorWatcher() {
       beep(fresh.some((e) => e.type === "blocked"));
       router.refresh();
       // A check-in card goes away by itself; a turned-away scan stays until closed.
-      fresh.filter((e) => e.type === "checkin").forEach((e) => window.setTimeout(() => dismiss(e.id), 20_000));
+      fresh.filter((e) => e.type !== "blocked").forEach((e) => window.setTimeout(() => dismiss(e.id), 20_000));
     };
 
     const timer = window.setInterval(poll, POLL_MS);
@@ -73,6 +73,26 @@ export function DoorWatcher() {
     <div aria-live="polite" className="fixed right-3 bottom-3 left-3 z-50 flex flex-col gap-2 sm:left-auto sm:w-[340px] print:hidden">
       {cards.map((card) => {
         const blocked = card.type === "blocked";
+        // A client signed for a PT hour: its own card, in the gym's yellow.
+        if (card.type === "pt") {
+          return (
+            <div key={card.id} className="flex items-start gap-3 rounded-xl border border-volt bg-panel-raised px-4 py-3 shadow-lg">
+              <PenLine size={20} className="mt-0.5 flex-shrink-0 text-volt" />
+              <div className="min-w-0 flex-1">
+                <div className="font-body text-[12px] font-semibold text-volt">เซ็นรับการเทรนแล้ว · {formatTimeTh(card.at)} น.</div>
+                <Link href={`/owner/members/${card.memberId}`} className="block truncate font-body text-[15px] font-semibold text-text-hi no-underline hover:text-volt">
+                  {card.name}
+                </Link>
+                <div className="text-[12.5px] text-text-lo">
+                  เทรนเนอร์ {card.trainer || "-"} · ตัด 1 ชั่วโมง เหลือ {card.ptLeft ?? "-"} ชั่วโมง
+                </div>
+              </div>
+              <button onClick={() => dismiss(card.id)} aria-label="ปิด" className="cursor-pointer border-none bg-transparent p-0 text-text-faint hover:text-text-hi">
+                <X size={16} />
+              </button>
+            </div>
+          );
+        }
         return (
           <div
             key={card.id}

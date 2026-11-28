@@ -12,6 +12,7 @@ import { changePurchaseEnd, deletePurchase, sellPackage, sellPt, updateMemberDet
 import { expiryLabel, expiryState, formatDateTh, membershipEnd, suggestedStart, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
 import { PAYMENT_LABEL, packageTerms } from "@/lib/labels";
+import { SignatureView } from "@/components/SignatureView";
 import type { Member, MemberPurchase, Package, Profile } from "@/types/database";
 
 type TeamMember = Pick<Profile, "id" | "full_name" | "role">;
@@ -374,9 +375,12 @@ function PurchaseRow({ purchase, memberId, sellerName, isOwner }: { purchase: Me
   );
 }
 
+export type PtVisit = { id: string; session_date: string; session_time: string; status: string; signature: string | null; trainer_id: string };
+
 export function MemberDetailClient({
   member,
   purchases,
+  sessions,
   packages,
   team,
   currentUserId,
@@ -385,6 +389,7 @@ export function MemberDetailClient({
 }: {
   member: Member;
   purchases: MemberPurchase[];
+  sessions: PtVisit[];
   packages: Package[];
   team: TeamMember[];
   currentUserId: string;
@@ -466,6 +471,21 @@ export function MemberDetailClient({
             {purchases.length === 0 && <div className="bg-panel px-4 py-5 text-[13px] text-text-faint">ยังไม่มีรายการ</div>}
             {purchases.map((p) => (
               <PurchaseRow key={p.id} purchase={p} memberId={member.id} sellerName={p.sold_by ? names.get(p.sold_by) ?? "" : ""} isOwner={isOwner} />
+            ))}
+          </div>
+
+          {/* Each PT hour the member signed for on a trainer's phone. */}
+          <h2 className="m-0 mt-6 mb-2.5 font-heading text-[15px] text-text-hi">เซ็นรับการเทรนแล้ว {sessions.length} ครั้ง</h2>
+          <div className="overflow-hidden rounded-xl border border-border">
+            {sessions.length === 0 && <div className="bg-panel px-4 py-5 text-[13px] text-text-faint">ยังไม่มีการเซ็นรับการเทรนในระบบนี้</div>}
+            {sessions.map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-3 border-t border-border bg-panel px-4 py-2.5 first:border-t-0">
+                <div className="text-[13.5px] text-text-hi">
+                  {formatDateTh(s.session_date)} <span className="text-text-faint">เวลา {s.session_time.slice(0, 5)} น.</span>
+                  <div className="text-xs text-text-lo">เทรนเนอร์ {names.get(s.trainer_id) ?? "-"}</div>
+                </div>
+                <SignatureView signature={s.signature} className="h-11 w-24 flex-shrink-0 rounded-md bg-white" />
+              </div>
             ))}
           </div>
         </>

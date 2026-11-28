@@ -7,12 +7,15 @@ import type { VisitActivity } from "@/types/database";
 export type DoorEvent = {
   id: string;
   at: string;
-  type: "checkin" | "blocked";
+  // "pt": a client signed for a PT hour on their trainer's phone.
+  type: "checkin" | "blocked" | "pt";
   memberId: string;
   name: string;
   activity: VisitActivity | null;
   expiresOn: string | null;
   reason: "expired" | "frozen" | "no_package" | null;
+  trainer?: string;
+  ptLeft?: number;
 };
 
 // What happened at the door since `since`: check-ins and scans that were
@@ -27,7 +30,7 @@ export async function doorEventsSince(since: string): Promise<DoorEvent[]> {
   const from = new Date(Number.isFinite(asked) ? Math.max(asked, floor) : floor).toISOString();
 
   const supabase = await createClient();
-  const [checkins, attempts] = await Promise.all([
+  const [checkins, attempts, signed] = await Promise.all([
     supabase
       .from("checkins")
       .select("id, checked_in_at, activity, member:members(id, name, membership_expires_on)")
@@ -42,6 +45,15 @@ export async function doorEventsSince(since: string): Promise<DoorEvent[]> {
       .gt("created_at", from)
       .order("created_at")
       .limit(20),
+    supabase
+      .from("pt_sessions")
+      .select("id, logged_at, member:members(id, name, pt_remaining), trainer:profiles(full_name)")
+      .eq("branch_id", profile.branch_id)
+      .eq("status", "approved")
+      .not("signature", "is", null)
+      .gt("logged_at", from)
+      .order("logged_at")
+      .limit(20),
   ]);
 
   type MemberRef = { id: string; name: string; membership_expires_on: string | null } | null;
@@ -53,6 +65,10 @@ export async function doorEventsSince(since: string): Promise<DoorEvent[]> {
   for (const row of (attempts.data ?? []) as unknown as { id: string; created_at: string; reason: DoorEvent["reason"]; member: MemberRef }[]) {
     if (!row.member) continue;
     events.push({ id: `a-${row.id}`, at: row.created_at, type: "blocked", memberId: row.member.id, name: row.member.name, activity: null, expiresOn: row.member.membership_expires_on, reason: row.reason });
+  }
+  for (const row of (signed.data ?? []) as unknown as { id: string; logged_at: string; member: { id: string; name: string; pt_remaining: number } | null; trainer: { full_name: string } | null }[]) {
+    if (!row.member) continue;
+    events.push({ id: `p-${row.id}`, at: row.logged_at, type: "pt", memberId: row.member.id, name: row.member.name, activity: null, expiresOn: null, reason: null, trainer: row.trainer?.full_name ?? "", ptLeft: row.member.pt_remaining });
   }
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }
