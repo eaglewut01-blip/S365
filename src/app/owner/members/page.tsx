@@ -12,5 +12,5 @@ export default async function MembersPage() {
     supabase.from("members").select("*").eq("branch_id", profile.branch_id ?? "").order("name").order("id").range(from, to)
   );
 
-  return <MembersClient members={members} />;
+  return <MembersClient members={members} isOwner={profile.role === "owner"} canExport={profile.role === "owner" || !profile.counter_only} />;
 }

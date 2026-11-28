@@ -18,6 +18,7 @@ export default async function TrainerSignOffPage({ searchParams }: { searchParam
       .select("id, name, pt_total, pt_remaining, pt_trainer_id")
       .eq("branch_id", trainer.branch_id ?? "")
       .gt("pt_remaining", 0)
+      .neq("status", "cancelled")
       .order("name")
       .limit(1000),
     supabase
