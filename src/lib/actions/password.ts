@@ -9,7 +9,7 @@ import type { Role } from "@/types/database";
 const ROLE_HOME: Record<Role, string> = {
   owner: "/owner",
   staff: "/owner",
-  trainer: "/trainer",
+  trainer: "/trainer/schedule",
   member: "/member",
   pending: "/pending",
 };

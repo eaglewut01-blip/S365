@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { DayNav, dateParam } from "@/components/DayNav";
@@ -38,7 +39,7 @@ export default async function TrainerSchedulePage({ searchParams }: { searchPara
 
   return (
     <div className="p-4 sm:p-7">
-      <PageHeader title="ตารางเทรนเนอร์" subtitle="เทรนเนอร์ลงตารางของตัวเองทุกเช้า หน้านี้รวมทั้งทีมไว้ในวันเดียว" />
+      <PageHeader title="ตารางเทรนเนอร์" subtitle="เทรนเนอร์ล็อกอินด้วยบัญชีของตัวเองแล้วลงตารางที่เมนู ลงตารางของฉัน หน้านี้รวมทั้งทีมไว้ในวันเดียว ผู้จัดการกด ลงหรือแก้ให้ ใต้ชื่อเทรนเนอร์ได้" />
       <DayNav basePath="/owner/trainer-schedule" date={date} />
 
       {slots.error ? (
@@ -89,6 +90,9 @@ export default async function TrainerSchedulePage({ searchParams }: { searchPara
                   {team.map((t) => (
                     <th key={t.id} scope="col" className="min-w-[110px] border-l border-border px-2.5 py-2.5 font-body text-[13px] font-semibold text-text-hi">
                       {t.full_name}
+                      <Link href={`/owner/trainer-schedule/${t.id}?d=${date}`} className="ml-2 text-[12px] font-normal text-volt underline">
+                        ลงหรือแก้ให้
+                      </Link>
                     </th>
                   ))}
                 </tr>

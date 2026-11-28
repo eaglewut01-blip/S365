@@ -4,7 +4,7 @@ import { CalendarClock, CalendarDays, ClipboardCheck } from "lucide-react";
 import { PortalNav, type NavItem } from "./PortalNav";
 
 const items: NavItem[] = [
-  { href: "/trainer/schedule", label: "ลงตารางวันนี้", icon: CalendarClock },
+  { href: "/trainer/schedule", label: "ลงตารางของฉัน", icon: CalendarClock },
   { href: "/trainer", label: "คลาสของฉัน", icon: CalendarDays },
   { href: "/trainer/pt-sessions", label: "เซสชัน PT", icon: ClipboardCheck },
 ];
