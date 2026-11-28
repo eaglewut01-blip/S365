@@ -158,7 +158,12 @@ type PurchaseRow = Record<string, unknown>;
 // left out when the database does not have them yet, so selling never stops.
 async function insertPurchase(supabase: Awaited<ReturnType<typeof createClient>>, row: PurchaseRow) {
   const first = await supabase.from("member_purchases").insert(row);
-  if (!first.error || !("trainer_id" in row) || !/trainer_id/.test(first.error.message)) return first;
+  if (!first.error) return first;
+  // A shared sale cannot be saved until the database has the columns for it.
+  if ("sold_by_2" in row && /sold_by_2/.test(first.error.message)) {
+    return { ...first, error: { ...first.error, message: "ยังแบ่งค่าคอมสองคนไม่ได้ ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน" } };
+  }
+  if (!("trainer_id" in row) || !/trainer_id/.test(first.error.message)) return first;
   const { trainer_id: _dropped, ...rest } = row;
   void _dropped;
   return supabase.from("member_purchases").insert(rest);
@@ -212,6 +217,20 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
     if (!trainerId) return { error: "เลือกเทรนเนอร์ที่เทรนให้" };
   }
 
+  // Two sellers sharing the commission: the second one's part of the total.
+  const soldBy2 = field("sold_by_2");
+  const total = (pkg ? membershipAmount : 0) + (hours >= 1 ? ptAmount : 0);
+  const share2 = Math.round(Number(field("sold_by_2_amount") || 0) * 100) / 100;
+  if (soldBy2) {
+    if (soldBy2 === soldBy) return { error: "ผู้ขายคนที่ 2 ต้องเป็นคนละคนกับผู้ขายคนที่ 1" };
+    if (!Number.isFinite(share2) || share2 <= 0) return { error: "ใส่ยอดของผู้ขายคนที่ 2" };
+    if (share2 >= total) return { error: "ยอดของผู้ขายคนที่ 2 ต้องน้อยกว่ายอดรวมของการขาย" };
+  }
+  // Spread over the membership and PT lines in proportion to their amounts.
+  const share2Membership = soldBy2 && pkg ? (hours >= 1 ? Math.round((share2 * membershipAmount) / total) : share2) : 0;
+  const share2Pt = soldBy2 && hours >= 1 ? share2 - share2Membership : 0;
+  const split = (amount: number) => (soldBy2 && amount > 0 ? { sold_by_2: soldBy2, sold_by_2_amount: amount } : {});
+
   // The customer: an existing member, or a new one added here
   let memberId = field("member_id");
   let memberName = "";
@@ -255,9 +274,9 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
   const base = { branch_id: staffer.branch_id, member_id: memberId, payment_method: method, sold_by: soldBy, purchased_on: purchasedOn, note, created_by: staffer.id, ...(proofPath ? { proof_path: proofPath } : {}), ...(documentPaths.length ? { document_paths: documentPaths } : {}) };
 
   if (pkg) {
-    const { error } = await supabase.from("member_purchases").insert({
+    const { error } = await insertPurchase(supabase, {
       ...base, package_id: pkg.id, kind: "membership", package_name: pkg.name, amount: membershipAmount,
-      starts_on: startsOn, ends_on: endsOn, pt_sessions: 0, is_renewal: await earlier("membership"),
+      starts_on: startsOn, ends_on: endsOn, pt_sessions: 0, is_renewal: await earlier("membership"), ...split(share2Membership),
     });
     if (error) return { error: error.message, memberId, memberName };
     await supabase.from("members").update({ plan: pkg.name, status: "active" }).eq("id", memberId);
@@ -267,7 +286,7 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
   if (hours >= 1) {
     const { error } = await insertPurchase(supabase, {
       ...base, package_id: null, kind: "pt", package_name: `PT ${hours} ชั่วโมง${bonus ? ` แถม ${bonus}` : ""}`, amount: ptAmount,
-      starts_on: null, ends_on: null, pt_sessions: hours + bonus, is_renewal: await earlier("pt"), trainer_id: trainerId,
+      starts_on: null, ends_on: null, pt_sessions: hours + bonus, is_renewal: await earlier("pt"), trainer_id: trainerId, ...split(share2Pt),
     });
     if (error) {
       return { error: `${lines.length ? "บันทึกค่าสมาชิกแล้ว แต่" : ""}บันทึก PT ไม่สำเร็จ: ${error.message}`, memberId, memberName, lines };

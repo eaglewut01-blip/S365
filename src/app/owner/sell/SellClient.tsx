@@ -80,6 +80,8 @@ function SaleForm({
   const [bonus, setBonus] = useState("");
   const [perHour, setPerHour] = useState("");
   const [ptTyped, setPtTyped] = useState("");
+  const [seller2, setSeller2] = useState("");
+  const [share2Typed, setShare2Typed] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const [proof, setProof] = useState<{ path: string; name: string } | null>(null);
@@ -128,6 +130,9 @@ function SaleForm({
   const ptAmount = ptTyped || (h > 0 && Number(perHour) > 0 ? String(Math.round(h * Number(perHour))) : "");
   const total = (sellMembership ? Number(membershipAmount) || 0 : 0) + (sellPt ? Number(ptAmount) || 0 : 0);
   const trainers = team.filter((t) => t.role === "trainer");
+  // Shared sale: the second seller's part starts at half and can be changed.
+  const share2 = share2Typed || (seller2 && total > 0 ? String(Math.round(total / 2)) : "");
+  const share1 = Math.max(0, total - (Number(share2) || 0));
 
   const pick = (c: Customer) => {
     setCustomer(c);
@@ -138,13 +143,17 @@ function SaleForm({
 
   return (
     <form
-      action={(formData) =>
+      // Submitted by hand rather than through `action`, which would put every
+      // untouched field back to its default after an error (seller, trainer, date).
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
         startTransition(async () => {
           const res = await recordSale(formData);
           if (res.success) onDone(res);
           else setError(res.error ?? "บันทึกไม่สำเร็จ");
-        })
-      }
+        });
+      }}
     >
       <Step n={1} title="ลูกค้า">
         <div className="mb-3 flex flex-wrap gap-2">
@@ -370,6 +379,31 @@ function SaleForm({
           <Field label="หมายเหตุ (ไม่บังคับ)" className="col-span-2 sm:col-span-1">
             <Input name="note" placeholder="เช่น โปรพิเศษ" />
           </Field>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="ผู้ขายคนที่ 2 (ถ้าแบ่งค่าคอม)">
+            <Select name="sold_by_2" value={seller2} onChange={(e) => setSeller2(e.target.value)}>
+              <option value="">ขายคนเดียว</option>
+              {team.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {seller2 && (
+            <>
+              <Field label="ยอดของผู้ขายคนที่ 2 (บาท)">
+                <Input name="sold_by_2_amount" type="number" min={1} step="1" inputMode="numeric" value={share2} onChange={(e) => setShare2Typed(e.target.value)} required />
+              </Field>
+              <Field label="ยอดของผู้ขายคนที่ 1 (บาท)" className="col-span-2">
+                <div className="rounded-lg border border-border bg-panel-raised px-3 py-2 text-[13.5px] text-text-hi tabular-nums">
+                  {share1.toLocaleString("th-TH")} <span className="text-text-faint">จากยอดรวม {total.toLocaleString("th-TH")} บาท</span>
+                </div>
+              </Field>
+            </>
+          )}
         </div>
 
         <div className="mt-4">

@@ -21,6 +21,9 @@ export type SaleRow = {
   method: PaymentMethod;
   purchasedOn: string;
   seller: string;
+  // A second seller sharing the sale, and the part of `amount` credited to them.
+  seller2: string;
+  seller2Amount: number;
   trainer: string;
   proof_path?: string | null;
   document_paths?: string[] | null;
@@ -28,6 +31,9 @@ export type SaleRow = {
 
 const NONE = "ไม่ระบุ";
 const sum = (rows: SaleRow[]) => rows.reduce((total, s) => total + s.amount, 0);
+// A shared sale counts for both sellers, each with their own part of the amount.
+const credits = (rows: SaleRow[]): SaleRow[] =>
+  rows.flatMap((s) => (s.seller2Amount > 0 ? [{ ...s, amount: s.amount - s.seller2Amount }, { ...s, seller: s.seller2, amount: s.seller2Amount }] : [s]));
 const people = (rows: SaleRow[]) => new Set(rows.map((s) => s.memberId)).size;
 
 function Summary({ title, nameLabel, rows, by }: { title: string; nameLabel: string; rows: SaleRow[]; by: (s: SaleRow) => string }) {
@@ -86,11 +92,14 @@ export function SalesTable({ sales }: { sales: SaleRow[] }) {
     (s) =>
       (!kind || s.kind === kind) &&
       (!renewal || (renewal === "repeat") === s.isRenewal) &&
-      (!seller || (s.seller || NONE) === seller) &&
+      (!seller || (s.seller || NONE) === seller || (s.seller2Amount > 0 && s.seller2 === seller)) &&
       (!trainer || (s.trainer || NONE) === trainer)
   );
-  const memberships = shown.filter((s) => s.kind === "membership");
+  // Money is counted per seller's part, so one seller's total is what they are credited with.
+  const credited = credits(shown).filter((c) => !seller || (c.seller || NONE) === seller);
+  const memberships = credited.filter((s) => s.kind === "membership");
   const pt = shown.filter((s) => s.kind === "pt");
+  const ptCredited = credited.filter((s) => s.kind === "pt");
   const tile = "min-w-[150px] flex-1 rounded-xl border border-border bg-panel px-[18px] py-4";
   const filtered = Boolean(kind || renewal || seller || trainer);
 
@@ -110,7 +119,7 @@ export function SalesTable({ sales }: { sales: SaleRow[] }) {
         </Select>
         <Select value={seller} onChange={(e) => setSeller(e.target.value)} aria-label="กรองตามผู้ขาย" className="!w-auto py-1.5 text-[12.5px]">
           <option value="">ผู้ขายทุกคน</option>
-          {options((s) => s.seller).map((name) => (
+          {[...new Set([...options((s) => s.seller), ...sales.filter((s) => s.seller2Amount > 0 && s.seller2).map((s) => s.seller2)])].map((name) => (
             <option key={name} value={name}>
               ผู้ขาย: {name}
             </option>
@@ -142,7 +151,7 @@ export function SalesTable({ sales }: { sales: SaleRow[] }) {
       <div className="mb-[22px] flex flex-wrap gap-3.5">
         <div className={tile}>
           <div className="mb-2 text-[12.5px] text-text-lo">ยอดขายรวม</div>
-          <div className="font-heading text-[28px] leading-none font-bold text-mint">{formatBaht(sum(shown))}</div>
+          <div className="font-heading text-[28px] leading-none font-bold text-mint">{formatBaht(sum(credited))}</div>
           <div className="mt-1.5 text-xs text-text-faint">
             {shown.length} รายการ · ลูกค้า {people(shown)} คน
           </div>
@@ -156,15 +165,15 @@ export function SalesTable({ sales }: { sales: SaleRow[] }) {
         </div>
         <div className={tile}>
           <div className="mb-2 text-[12.5px] text-text-lo">PT</div>
-          <div className="font-heading text-[28px] leading-none font-bold text-text-hi">{people(pt)} คน</div>
+          <div className="font-heading text-[28px] leading-none font-bold text-text-hi">{people(ptCredited)} คน</div>
           <div className="mt-1.5 text-xs text-text-faint">
-            {formatBaht(sum(pt))} · ใหม่ {people(pt.filter((s) => !s.isRenewal))} คน · ซื้อซ้ำ {people(pt.filter((s) => s.isRenewal))} คน
+            {formatBaht(sum(ptCredited))} · ใหม่ {people(ptCredited.filter((s) => !s.isRenewal))} คน · ซื้อซ้ำ {people(ptCredited.filter((s) => s.isRenewal))} คน
           </div>
         </div>
       </div>
 
       <div className="mb-6 flex flex-col gap-5 min-[1700px]:flex-row">
-        <Summary title="ใครขายได้เท่าไร" nameLabel="ผู้ขาย" rows={shown} by={(s) => s.seller} />
+        <Summary title="ใครขายได้เท่าไร" nameLabel="ผู้ขาย" rows={credited} by={(s) => s.seller} />
         <Summary title="PT ของเทรนเนอร์แต่ละคน" nameLabel="เทรนเนอร์" rows={pt} by={(s) => s.trainer} />
       </div>
 
@@ -198,7 +207,20 @@ export function SalesTable({ sales }: { sales: SaleRow[] }) {
                   <div className="text-xs text-text-faint">{PAYMENT_LABEL[s.method]}</div>
                   <SaleFiles purchase={s} />
                 </td>
-                <td className="px-4 py-3">{s.seller || "-"}</td>
+                <td className="px-4 py-3">
+                  {s.seller2Amount > 0 ? (
+                    <>
+                      <div>
+                        {s.seller || "-"} <span className="text-text-faint">{formatBaht(s.amount - s.seller2Amount)}</span>
+                      </div>
+                      <div>
+                        {s.seller2 || "-"} <span className="text-text-faint">{formatBaht(s.seller2Amount)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    s.seller || "-"
+                  )}
+                </td>
                 <td className="px-4 py-3">{s.kind === "pt" ? s.trainer || "-" : ""}</td>
               </tr>
             ))}

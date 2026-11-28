@@ -48,6 +48,8 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
     method: s.payment_method,
     purchasedOn: s.purchased_on,
     seller: (s.sold_by && names.get(s.sold_by)) || "",
+    seller2: (s.sold_by_2 && names.get(s.sold_by_2)) || "",
+    seller2Amount: s.sold_by_2 ? Number(s.sold_by_2_amount ?? 0) : 0,
     // The trainer recorded on the sale; for older rows, the member's trainer,
     // or the name carried over from the previous system.
     trainer:

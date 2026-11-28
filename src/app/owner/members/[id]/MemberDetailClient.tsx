@@ -51,17 +51,22 @@ function SellForm({ member, packages, team, currentUserId }: { member: Member; p
 
   return (
     <form
-      action={(formData) =>
+      // Submitted by hand: `action` would reset the seller and date after an error.
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
         startTransition(async () => {
           const res = await sellPackage(formData);
           setMessage(res);
           if (res.success) {
+            form.reset();
             setPackageId("");
             setAmount("");
             setEndsOnTyped("");
           }
-        })
-      }
+        });
+      }}
     >
       <input type="hidden" name="member_id" value={member.id} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -160,18 +165,23 @@ function PtSellForm({ member, team, currentUserId }: { member: Member; team: Tea
 
   return (
     <form
-      action={(formData) =>
+      // Submitted by hand: `action` would reset the seller and trainer after an error.
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const formData = new FormData(form);
         startTransition(async () => {
           const res = await sellPt(formData);
           setMessage(res);
           if (res.success) {
+            form.reset();
             setHours("");
             setBonus("");
             setPerHour("");
             setAmountTyped("");
           }
-        })
-      }
+        });
+      }}
     >
       <input type="hidden" name="member_id" value={member.id} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

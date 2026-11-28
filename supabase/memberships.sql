@@ -734,3 +734,9 @@ grant execute on function public.team_schedule(date) to authenticated;
 -- the app keeps to the counter screens (check-in, selling, member look-up);
 -- see COUNTER_PATHS in src/lib/supabase/middleware.ts.
 alter table public.profiles add column if not exists counter_only boolean not null default false;
+
+-- Two people sometimes close one sale and share the commission. The second
+-- seller and the part of the amount credited to them are kept on the sale;
+-- the first seller (sold_by) is credited with the rest.
+alter table public.member_purchases add column if not exists sold_by_2 uuid references public.profiles (id) on delete set null;
+alter table public.member_purchases add column if not exists sold_by_2_amount numeric(10, 2);

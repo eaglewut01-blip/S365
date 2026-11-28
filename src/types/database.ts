@@ -128,6 +128,9 @@ export interface MemberPurchase {
   is_renewal: boolean;
   proof_path: string | null;
   trainer_id?: string | null;
+  // A second seller sharing the commission, and the part of `amount` credited to them.
+  sold_by_2?: string | null;
+  sold_by_2_amount?: number | null;
   document_paths?: string[] | null;
   note: string | null;
   created_at: string;
