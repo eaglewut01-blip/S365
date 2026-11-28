@@ -2,17 +2,11 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, todayBangkok } from "@/lib/dates";
+import { addDays, mondayOf, todayBangkok } from "@/lib/dates";
 import type { ClassRow } from "@/types/database";
 import { PosterMaker, type PosterClass } from "./PosterMaker";
 
 export const metadata = { title: "ภาพตารางคลาส | S365 Fitness" };
-
-// Monday of the week that contains `date`.
-function mondayOf(date: string): string {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay(); // 0 = Sunday
-  return addDays(date, day === 0 ? -6 : 1 - day);
-}
 
 // Draws the week's class timetable as an image for Facebook and the website.
 export default async function PosterPage({ searchParams }: { searchParams: Promise<{ w?: string }> }) {

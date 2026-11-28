@@ -86,3 +86,9 @@ export function suggestedStart(expiresOn: string | null | undefined): string {
   const today = todayBangkok();
   return expiresOn && expiresOn >= today ? addDays(expiresOn, 1) : today;
 }
+
+// Monday of the week that contains `date`.
+export function mondayOf(date: string): string {
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(date, day === 0 ? -6 : 1 - day);
+}

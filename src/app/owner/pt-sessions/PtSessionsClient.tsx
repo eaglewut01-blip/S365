@@ -20,7 +20,7 @@ export type PtSessionRow = {
   trainerName: string;
 };
 
-export function PtSessionsClient({ sessions }: { sessions: PtSessionRow[] }) {
+export function PtSessionsClient({ sessions, period }: { sessions: PtSessionRow[]; period: string }) {
   const [pending, startTransition] = useTransition();
   const [trainer, setTrainer] = useState("");
   const [error, setError] = useState("");
@@ -51,7 +51,7 @@ export function PtSessionsClient({ sessions }: { sessions: PtSessionRow[] }) {
   return (
     <div>
       <div className="mb-5 flex flex-wrap gap-3.5">
-        <StatTile label="เทรนแล้วเดือนนี้ (ชั่วโมง)" value={done.length} tone="mint" />
+        <StatTile label={`เทรนแล้ว${period} (ชั่วโมง)`} value={done.length} tone="mint" />
         <StatTile label="ลูกค้าที่มาเทรน (คน)" value={new Set(done.map((s) => s.member.name)).size} />
         {waiting > 0 && <StatTile label="รอตรวจสอบ" value={waiting} tone="amber" />}
       </div>
@@ -116,7 +116,7 @@ export function PtSessionsClient({ sessions }: { sessions: PtSessionRow[] }) {
             </Button>
           </div>
         ))}
-        {shown.length === 0 && <div className="rounded-xl border border-border bg-panel p-6 text-center text-[13.5px] text-text-faint">เดือนนี้ยังไม่มีเซสชัน</div>}
+        {shown.length === 0 && <div className="rounded-xl border border-border bg-panel p-6 text-center text-[13.5px] text-text-faint">{`${period}ยังไม่มีเซสชัน`}</div>}
       </div>
     </div>
   );
