@@ -449,7 +449,7 @@ export function MemberDetailClient({
         </div>
       ) : (
         <>
-          <SellPanel member={member} packages={packages} team={team} currentUserId={currentUserId} />
+          <SellPanel member={member} packages={packages} team={team.filter((t) => t.role !== "left")} currentUserId={currentUserId} />
 
           <h2 className="m-0 mt-6 mb-2.5 font-heading text-[15px] text-text-hi">ประวัติการซื้อ</h2>
           <div className="overflow-hidden rounded-xl border border-border">

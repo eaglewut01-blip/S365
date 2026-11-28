@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { KeyRound, Pencil, UserPlus } from "lucide-react";
+import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { approveApplicant, createStaffAccount, createStaffLogin, createStaffLoginsBulk, rejectApplicant, setStaffPassword, updateStaffMember } from "@/lib/actions/accounts";
+import { approveApplicant, createStaffAccount, createStaffLogin, createStaffLoginsBulk, rejectApplicant, removeStaffMember, restoreStaffMember, setStaffPassword, updateStaffMember } from "@/lib/actions/accounts";
 import type { Profile } from "@/types/database";
 
 type Message = { error?: string; success?: boolean } | null;
@@ -63,7 +63,7 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
   const start = person.work_start?.slice(0, 5) ?? "";
   const [form, setForm] = useState({ fullName: person.full_name, loginId: login, role: person.role as string, phone: person.phone ?? "", workStart: start });
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }));
-  const grid = "grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto] items-center gap-x-3 border-t border-border bg-panel px-4 py-3";
+  const grid = "grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto_auto] items-center gap-x-3 border-t border-border bg-panel px-4 py-3";
 
   if (!editing) {
     return (
@@ -88,6 +88,21 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
         >
           <Pencil size={12} /> แก้
         </button>
+        <button
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm(`ลบ ${person.full_name} ออกจากทีมงาน\n\nเขาจะเข้าระบบไม่ได้อีก ลูกค้า PT ของเขาจะกลับไปเป็นยังไม่ระบุเทรนเนอร์ ส่วนประวัติการขายและการเทรนที่ผ่านมายังอยู่ครบ`)) return;
+            startTransition(async () => {
+              const res = await removeStaffMember(person.id);
+              setError(res.error ?? "");
+            });
+          }}
+          aria-label={`ลบ ${person.full_name} ออกจากทีมงาน`}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-coral bg-transparent px-2.5 py-1.5 text-[12.5px] font-semibold text-coral hover:bg-coral-bg disabled:opacity-45"
+        >
+          <Trash2 size={12} /> ลบออก
+        </button>
+        {error && <div className="col-span-full mt-1.5 text-[12.5px] text-coral">{error}</div>}
       </div>
     );
   }
@@ -154,6 +169,28 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
   );
 }
 
+function GoneRow({ person, login }: { person: Profile; login: string }) {
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+  const restore = (role: "trainer" | "staff") => startTransition(async () => setError((await restoreStaffMember(person.id, role)).error ?? ""));
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border py-2.5 first:border-t-0">
+      <div className="min-w-[150px] flex-1 text-[13.5px] text-text-hi">
+        {person.full_name}
+        <span className="ml-2 text-xs text-text-faint">{login}</span>
+      </div>
+      <Button disabled={pending} onClick={() => restore("trainer")} className="px-2.5 py-1.5 text-xs">
+        นำกลับเป็นเทรนเนอร์
+      </Button>
+      <Button disabled={pending} onClick={() => restore("staff")} className="px-2.5 py-1.5 text-xs">
+        นำกลับเป็นเซลล์ / พนักงาน
+      </Button>
+      {error && <div className="w-full text-[12.5px] text-coral">{error}</div>}
+    </div>
+  );
+}
+
 function WaitingRow({ person, login }: { person: Profile; login: string }) {
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -193,11 +230,13 @@ function WaitingRow({ person, login }: { person: Profile; login: string }) {
 export function TeamClient({
   team,
   waiting,
+  gone,
   logins,
   adminProblem,
 }: {
   team: Profile[];
   waiting: Profile[];
+  gone: Profile[];
   logins: Record<string, string>;
   adminProblem: string;
 }) {
@@ -310,14 +349,15 @@ export function TeamClient({
       </details>
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <div className="min-w-[800px]">
-          <div className="grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto] gap-x-3 bg-panel px-4 py-2.5 text-xs text-text-faint">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto_auto] gap-x-3 bg-panel px-4 py-2.5 text-xs text-text-faint">
             <div>ชื่อ</div>
             <div>ไอดีหรืออีเมลที่ใช้เข้า</div>
             <div>บทบาท</div>
             <div>เวลาเข้างาน</div>
             <div>รหัสผ่าน</div>
             <div className="w-[58px]">แก้ไข</div>
+            <div className="w-[78px]">ลาออก</div>
           </div>
           {team.map((t) => (
             <MemberRow key={t.id} person={t} login={logins[t.id] ?? ""} />
@@ -325,6 +365,16 @@ export function TeamClient({
           {team.length === 0 && <div className="bg-panel px-4 py-6 text-center text-[13px] text-text-faint">ยังไม่มีทีมงาน</div>}
         </div>
       </div>
+
+      {gone.length > 0 && (
+        <details className="mt-4 rounded-xl border border-border bg-panel p-[18px]">
+          <summary className="cursor-pointer font-heading text-[15px] text-text-hi">ลาออกแล้ว {gone.length} คน</summary>
+          <p className="mt-2 mb-1 text-[12.5px] text-text-lo">คนในรายการนี้เข้าระบบไม่ได้ ประวัติการขายและการเทรนยังอยู่ครบ ถ้าลบผิดหรือกลับมาทำงาน กดนำกลับได้</p>
+          {gone.map((person) => (
+            <GoneRow key={person.id} person={person} login={logins[person.id] ?? ""} />
+          ))}
+        </details>
+      )}
     </div>
   );
 }

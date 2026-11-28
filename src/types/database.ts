@@ -1,5 +1,7 @@
 // "pending": signed up on their own and waiting for the owner to approve.
-export type Role = "owner" | "staff" | "trainer" | "member" | "pending";
+// "left": someone who no longer works here. The account is kept so sales and
+// sessions keep their name, but it can open nothing.
+export type Role = "owner" | "staff" | "trainer" | "member" | "pending" | "left";
 
 export type MemberStatus = "active" | "frozen" | "cancelled";
 export type BillingStatus = "paid" | "due" | "overdue";

@@ -9,15 +9,18 @@ export const metadata = { title: "รออนุมัติ | S365 Fitness", r
 export default async function PendingPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "pending") redirect("/login");
+  if (profile.role !== "pending" && profile.role !== "left") redirect("/login");
+  const left = profile.role === "left";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-base p-6">
       <div className="w-full max-w-[380px] rounded-2xl border border-border bg-panel p-8 text-center">
         <Hourglass size={40} className="mx-auto text-amber" strokeWidth={1.8} />
-        <h1 className="m-0 mt-4 font-heading text-[24px] leading-tight tracking-wide text-text-hi">รอเจ้าของอนุมัติ</h1>
+        <h1 className="m-0 mt-4 font-heading text-[24px] leading-tight tracking-wide text-text-hi">{left ? "บัญชีนี้ปิดแล้ว" : "รอเจ้าของอนุมัติ"}</h1>
         <p className="mt-2 mb-5 text-[13.5px] leading-relaxed text-text-lo">
-          คุณ{profile.full_name} สมัครเรียบร้อยแล้ว เมื่อเจ้าของยิมอนุมัติ ให้ออกจากระบบแล้วเข้าใหม่อีกครั้ง
+          {left
+            ? "บัญชีนี้ถูกนำออกจากทีมงานแล้ว ถ้าเป็นความผิดพลาดให้แจ้งเจ้าของยิม"
+            : `คุณ${profile.full_name} สมัครเรียบร้อยแล้ว เมื่อเจ้าของยิมอนุมัติ ให้ออกจากระบบแล้วเข้าใหม่อีกครั้ง`}
         </p>
         <div className="flex justify-center">
           <LogoutButton />

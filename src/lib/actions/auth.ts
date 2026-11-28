@@ -13,6 +13,7 @@ const ROLE_HOME: Record<Role, string> = {
   trainer: "/trainer/schedule",
   member: "/member",
   pending: "/pending",
+  left: "/pending",
 };
 
 export async function login(_prevState: { error: string } | null, formData: FormData) {
@@ -43,7 +44,7 @@ export async function login(_prevState: { error: string } | null, formData: Form
   const jar = await cookies();
   const after = jar.get(AFTER_LOGIN_COOKIE)?.value ?? "";
   if (after) jar.delete(AFTER_LOGIN_COOKIE);
-  if (role && role !== "member" && role !== "pending" && /^\/work(\?[\w=&%.~-]*)?$/.test(after)) redirect(after);
+  if (role && role !== "member" && role !== "pending" && role !== "left" && /^\/work(\?[\w=&%.~-]*)?$/.test(after)) redirect(after);
 
   redirect(role ? ROLE_HOME[role] : "/login");
 }

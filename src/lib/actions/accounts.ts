@@ -230,6 +230,48 @@ export async function updateStaffMember(
   return note ? { error: note } : { success: true };
 }
 
+// Owner only: someone has left the team. Their sign-in is blocked and they
+// disappear from every list and picker, but the account row is kept so the
+// sales and PT sessions they made still show their name.
+export async function removeStaffMember(userId: string): Promise<{ error?: string; success?: boolean }> {
+  const owner = await requireRole("owner");
+  const supabase = await createClient();
+  const { data: target } = await supabase.from("profiles").select("id, role, branch_id").eq("id", userId).maybeSingle();
+  if (!target || target.branch_id !== owner.branch_id || !["staff", "trainer"].includes(target.role)) {
+    return { error: "ไม่พบทีมงานคนนี้" };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ role: "left" }).eq("id", userId);
+  if (error) return { error: "ยังลบออกไม่ได้ ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน" };
+  // About a hundred years: the account can no longer sign in.
+  const { error: banError } = await admin.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
+  if (banError) return { error: banError.message };
+  // Their PT clients go back to "no trainer yet" so they can be handed on.
+  await supabase.from("members").update({ pt_trainer_id: null }).eq("pt_trainer_id", userId);
+
+  for (const path of ["/owner/team", "/owner/trainer-clients", "/owner/attendance", "/owner/trainer-schedule"]) revalidatePath(path);
+  return { success: true };
+}
+
+// Owner only: bring back someone removed by mistake, or who has returned.
+export async function restoreStaffMember(userId: string, role: "trainer" | "staff"): Promise<{ error?: string; success?: boolean }> {
+  const owner = await requireRole("owner");
+  if (role !== "trainer" && role !== "staff") return { error: "เลือกบทบาท" };
+  const supabase = await createClient();
+  const { data: target } = await supabase.from("profiles").select("id, role, branch_id").eq("id", userId).maybeSingle();
+  if (!target || target.branch_id !== owner.branch_id || target.role !== "left") return { error: "ไม่พบบัญชีนี้" };
+
+  const admin = createAdminClient();
+  const { error: banError } = await admin.auth.admin.updateUserById(userId, { ban_duration: "none" });
+  if (banError) return { error: banError.message };
+  const { error } = await admin.from("profiles").update({ role }).eq("id", userId).eq("role", "left");
+  if (error) return { error: error.message };
+
+  revalidatePath("/owner/team");
+  return { success: true };
+}
+
 async function pendingApplicant(userId: string, ownerBranch: string | null) {
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("id, role, branch_id").eq("id", userId).maybeSingle();

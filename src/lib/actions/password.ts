@@ -12,6 +12,7 @@ const ROLE_HOME: Record<Role, string> = {
   trainer: "/trainer/schedule",
   member: "/member",
   pending: "/pending",
+  left: "/pending",
 };
 
 const MIN_PASSWORD_LENGTH = 8;

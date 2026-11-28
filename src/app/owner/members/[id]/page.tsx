@@ -18,7 +18,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   const [purchases, packages, team] = await Promise.all([
     supabase.from("member_purchases").select("*").eq("member_id", id).order("purchased_on", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("packages").select("*").eq("branch_id", branchId).eq("active", true).order("kind").order("price"),
-    supabase.from("profiles").select("id, full_name, role").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer"]).order("full_name"),
+    supabase.from("profiles").select("id, full_name, role").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer", "left"]).order("full_name"),
   ]);
 
   return (

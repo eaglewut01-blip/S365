@@ -697,3 +697,9 @@ grant execute on function public.clock_in(text) to authenticated;
 -- The time each team member is due at work, set by the owner on the team
 -- page. Empty means no fixed time, so that person is never shown as late.
 alter table public.profiles add column if not exists work_start time;
+
+-- Someone who has left the team: the account stays, so past sales and PT
+-- sessions keep their name, but the role "left" opens nothing.
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('owner', 'staff', 'trainer', 'member', 'pending', 'left'));

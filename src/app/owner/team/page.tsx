@@ -26,6 +26,8 @@ export default async function TeamPage() {
     for (const user of data?.users ?? []) logins[user.id] = loginNameOf(user.email);
   }
 
+  const { data: gone } = await supabase.from("profiles").select("*").eq("branch_id", owner.branch_id ?? "").eq("role", "left").order("full_name");
+
   const { data: waiting } = await supabase
     .from("profiles")
     .select("*")
@@ -33,5 +35,5 @@ export default async function TeamPage() {
     .eq("role", "pending")
     .order("created_at");
 
-  return <TeamClient team={(team ?? []) as Profile[]} waiting={(waiting ?? []) as Profile[]} logins={logins} adminProblem={adminProblem} />;
+  return <TeamClient team={(team ?? []) as Profile[]} waiting={(waiting ?? []) as Profile[]} gone={(gone ?? []) as Profile[]} logins={logins} adminProblem={adminProblem} />;
 }
