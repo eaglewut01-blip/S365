@@ -703,3 +703,9 @@ alter table public.profiles add column if not exists work_start time;
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check
   check (role in ('owner', 'staff', 'trainer', 'member', 'pending', 'left'));
+
+-- A trainer also sees the PT sales made for their own clients (not only the
+-- sales they made themselves), so their client page can show what was bought.
+drop policy if exists "purchases_trainer_select" on public.member_purchases;
+create policy "purchases_trainer_select" on public.member_purchases for select
+  to authenticated using (public.current_role() = 'trainer' and (sold_by = auth.uid() or trainer_id = auth.uid()));

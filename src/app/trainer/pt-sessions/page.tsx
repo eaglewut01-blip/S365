@@ -7,7 +7,7 @@ export const metadata = { title: "ให้ลูกค้าเซ็นรั�
 
 // After a session the trainer opens this on their own phone, picks the
 // client, and hands the phone over to be signed. Built for a phone first.
-export default async function TrainerSignOffPage() {
+export default async function TrainerSignOffPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
   const trainer = await requireRole("trainer");
   const supabase = await createClient();
   const today = todayBangkok();
@@ -41,5 +41,6 @@ export default async function TrainerSignOffPage() {
     .filter((s) => s.status === "approved")
     .map((s) => ({ id: s.id, date: s.session_date, time: s.session_time.slice(0, 5), name: s.member?.name ?? "", signature: s.signature }));
 
-  return <SignOffClient clients={clients} signed={signed} today={today} trainerName={trainer.full_name} />;
+  const asked = (await searchParams).m;
+  return <SignOffClient clients={clients} signed={signed} today={today} trainerName={trainer.full_name} startWith={asked} />;
 }

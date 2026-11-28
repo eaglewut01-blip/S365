@@ -31,10 +31,11 @@ function ClientButton({ client, onPick }: { client: SignClient; onPick: () => vo
   );
 }
 
-export function SignOffClient({ clients, signed, today, trainerName }: { clients: SignClient[]; signed: SignedSession[]; today: string; trainerName: string }) {
+export function SignOffClient({ clients, signed, today, trainerName, startWith }: { clients: SignClient[]; signed: SignedSession[]; today: string; trainerName: string; startWith?: string }) {
   const router = useRouter();
   const pad = useRef<SignaturePadHandle>(null);
-  const [picked, setPicked] = useState<SignClient | null>(null);
+  // Arriving from a client's page opens straight on that client.
+  const [picked, setPicked] = useState<SignClient | null>(() => clients.find((c) => c.id === startWith) ?? null);
   const [signature, setSignature] = useState("");
   const [done, setDone] = useState<{ name: string; remaining: number } | null>(null);
   const [error, setError] = useState("");
