@@ -283,8 +283,10 @@ alter table public.pt_sessions enable row level security;
 alter table public.payments enable row level security;
 
 -- branches: any signed-in user can read; only owners manage
+drop policy if exists "branches_select" on public.branches;
 create policy "branches_select" on public.branches for select
   to authenticated using (true);
+drop policy if exists "branches_owner_write" on public.branches;
 create policy "branches_owner_write" on public.branches for all
   to authenticated using (public.current_role() = 'owner') with check (public.current_role() = 'owner');
 
@@ -297,13 +299,16 @@ create policy "branches_owner_write" on public.branches for all
 -- column allowlist (name/phone only) if that becomes a requirement, but never
 -- widen this to a blanket USING/CHECK on id = auth.uid() since that would let
 -- any signed-in user rewrite their own role straight to 'owner'.
+drop policy if exists "profiles_select_self" on public.profiles;
 create policy "profiles_select_self" on public.profiles for select
   to authenticated using (id = auth.uid());
+drop policy if exists "profiles_select_staff" on public.profiles;
 create policy "profiles_select_staff" on public.profiles for select
   to authenticated using (public.is_staff() and branch_id = public.current_branch());
 
 -- members: staff full access within branch; trainers read members they train;
 -- a member can read/update a narrow set of fields on their own linked row
+drop policy if exists "members_staff_all" on public.members;
 create policy "members_staff_all" on public.members for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
@@ -311,22 +316,27 @@ create policy "members_staff_all" on public.members for all
 -- Trainers can see the full member roster of their own branch (read-only) —
 -- needed so a trainer can pick a member from a list the first time they log
 -- a PT session with them, before any pt_sessions/class_bookings row exists.
+drop policy if exists "members_trainer_select" on public.members;
 create policy "members_trainer_select" on public.members for select
   to authenticated using (
     public.current_role() = 'trainer' and branch_id = public.current_branch()
   );
 
+drop policy if exists "members_self_select" on public.members;
 create policy "members_self_select" on public.members for select
   to authenticated using (profile_id = auth.uid());
 
 -- classes: readable by everyone signed in; staff manage; trainers can update their own classes
+drop policy if exists "classes_select" on public.classes;
 create policy "classes_select" on public.classes for select
   to authenticated using (true);
+drop policy if exists "classes_staff_write" on public.classes;
 create policy "classes_staff_write" on public.classes for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
 
 -- class_bookings: staff manage all in branch; members manage their own booking
+drop policy if exists "bookings_staff_all" on public.class_bookings;
 create policy "bookings_staff_all" on public.class_bookings for all
   to authenticated using (
     public.is_staff() and exists (
@@ -339,31 +349,37 @@ create policy "bookings_staff_all" on public.class_bookings for all
     )
   );
 
+drop policy if exists "bookings_select_trainer" on public.class_bookings;
 create policy "bookings_select_trainer" on public.class_bookings for select
   to authenticated using (
     exists (select 1 from public.classes cl where cl.id = class_bookings.class_id and cl.trainer_id = auth.uid())
   );
 
+drop policy if exists "bookings_member_select" on public.class_bookings;
 create policy "bookings_member_select" on public.class_bookings for select
   to authenticated using (
     exists (select 1 from public.members m where m.id = class_bookings.member_id and m.profile_id = auth.uid())
   );
 
+drop policy if exists "bookings_member_insert" on public.class_bookings;
 create policy "bookings_member_insert" on public.class_bookings for insert
   to authenticated with check (
     exists (select 1 from public.members m where m.id = class_bookings.member_id and m.profile_id = auth.uid())
   );
 
+drop policy if exists "bookings_member_delete" on public.class_bookings;
 create policy "bookings_member_delete" on public.class_bookings for delete
   to authenticated using (
     exists (select 1 from public.members m where m.id = class_bookings.member_id and m.profile_id = auth.uid())
   );
 
 -- checkins: staff insert/read within branch; a member can read their own history
+drop policy if exists "checkins_staff_all" on public.checkins;
 create policy "checkins_staff_all" on public.checkins for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
 
+drop policy if exists "checkins_member_select" on public.checkins;
 create policy "checkins_member_select" on public.checkins for select
   to authenticated using (
     exists (select 1 from public.members m where m.id = checkins.member_id and m.profile_id = auth.uid())
@@ -374,13 +390,16 @@ create policy "checkins_member_select" on public.checkins for select
 --  - trainer: can INSERT sessions for themselves (always starts "pending"), and read their own
 --  - member: can read their own sessions, and UPDATE ONLY the status of their own
 --            *pending* sessions to 'approved' or 'disputed' (enforced in check clause)
+drop policy if exists "pt_staff_all" on public.pt_sessions;
 create policy "pt_staff_all" on public.pt_sessions for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
 
+drop policy if exists "pt_trainer_select" on public.pt_sessions;
 create policy "pt_trainer_select" on public.pt_sessions for select
   to authenticated using (trainer_id = auth.uid());
 
+drop policy if exists "pt_trainer_insert" on public.pt_sessions;
 create policy "pt_trainer_insert" on public.pt_sessions for insert
   to authenticated with check (
     trainer_id = auth.uid()
@@ -388,11 +407,13 @@ create policy "pt_trainer_insert" on public.pt_sessions for insert
     and public.current_role() = 'trainer'
   );
 
+drop policy if exists "pt_member_select" on public.pt_sessions;
 create policy "pt_member_select" on public.pt_sessions for select
   to authenticated using (
     exists (select 1 from public.members m where m.id = pt_sessions.member_id and m.profile_id = auth.uid())
   );
 
+drop policy if exists "pt_member_update" on public.pt_sessions;
 create policy "pt_member_update" on public.pt_sessions for update
   to authenticated using (
     status = 'pending'
@@ -404,10 +425,12 @@ create policy "pt_member_update" on public.pt_sessions for update
   );
 
 -- payments: staff insert/read within branch; a member can read their own payment history
+drop policy if exists "payments_staff_all" on public.payments;
 create policy "payments_staff_all" on public.payments for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
 
+drop policy if exists "payments_member_select" on public.payments;
 create policy "payments_member_select" on public.payments for select
   to authenticated using (
     exists (select 1 from public.members m where m.id = payments.member_id and m.profile_id = auth.uid())

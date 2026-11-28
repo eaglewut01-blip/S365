@@ -20,7 +20,7 @@ export default async function OwnerPtSessionsPage({ searchParams }: { searchPara
   const start = `${month}-01`;
   const next = addMonths(start, 1);
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("pt_sessions")
     .select("*, member:members(name, pt_total, pt_remaining), trainer:profiles(full_name)")
     .eq("branch_id", profile.branch_id ?? "")
@@ -59,6 +59,12 @@ export default async function OwnerPtSessionsPage({ searchParams }: { searchPara
           </Link>
         )}
       </div>
+      {/* Say so when the list could not be read, rather than looking like an empty month. */}
+      {error && (
+        <div className="mb-4 rounded-xl border border-coral bg-coral-bg px-4 py-3 text-[13.5px] leading-relaxed text-text-hi">
+          โหลดรายการเซสชันไม่ได้ ส่งข้อความนี้ให้ผู้ดูแลระบบ: {error.message}
+        </div>
+      )}
       <PtSessionsClient key={month} sessions={sessions} />
     </div>
   );
