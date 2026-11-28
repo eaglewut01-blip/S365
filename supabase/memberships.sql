@@ -740,3 +740,29 @@ alter table public.profiles add column if not exists counter_only boolean not nu
 -- the first seller (sold_by) is credited with the rest.
 alter table public.member_purchases add column if not exists sold_by_2 uuid references public.profiles (id) on delete set null;
 alter table public.member_purchases add column if not exists sold_by_2_amount numeric(10, 2);
+
+-- ----------------------------------------------------------------------------
+-- Lockers lent at the counter: women's and men's, each numbered. One open
+-- loan per locker; a loan is closed when the key comes back.
+-- ----------------------------------------------------------------------------
+alter table public.branches add column if not exists lockers_female integer not null default 0;
+alter table public.branches add column if not exists lockers_male integer not null default 0;
+
+create table if not exists public.locker_loans (
+  id uuid primary key default gen_random_uuid(),
+  branch_id uuid not null references public.branches (id) on delete cascade,
+  member_id uuid not null references public.members (id) on delete cascade,
+  zone text not null check (zone in ('female', 'male')),
+  number integer not null check (number between 1 and 999),
+  lent_at timestamptz not null default now(),
+  returned_at timestamptz,
+  lent_by uuid references public.profiles (id) on delete set null
+);
+create unique index if not exists locker_loans_in_use_idx on public.locker_loans (branch_id, zone, number) where returned_at is null;
+create index if not exists locker_loans_open_idx on public.locker_loans (branch_id) where returned_at is null;
+
+alter table public.locker_loans enable row level security;
+drop policy if exists "locker_loans_staff_all" on public.locker_loans;
+create policy "locker_loans_staff_all" on public.locker_loans for all
+  to authenticated using (public.is_staff() and branch_id = public.current_branch())
+  with check (public.is_staff() and branch_id = public.current_branch());

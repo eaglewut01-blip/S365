@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, Check, QrCode } from "lucide-react";
+import { Search, Check, KeyRound, QrCode } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { checkInMember } from "@/lib/actions/checkins";
 import { expiryLabel, expiryState, formatTimeTh } from "@/lib/dates";
 import { ACTIVITIES, ACTIVITY_LABEL } from "@/lib/labels";
 import type { Member, VisitActivity } from "@/types/database";
+import { LockerPanel, ZONE_LABEL, type LockerLoan, type Person, type Zone } from "./LockerPanel";
 
 export type CheckinRow = {
   id: string;
@@ -29,12 +30,18 @@ export function CheckInClient({
   members,
   checkins,
   attempts,
+  lockers,
 }: {
   members: Member[];
   checkins: CheckinRow[];
   attempts: AttemptRow[];
+  lockers: { loans: LockerLoan[]; counts: Record<Zone, number>; notReady: boolean; isOwner: boolean };
 }) {
   const [query, setQuery] = useState("");
+  // Who a locker is being lent to; set from a row in today's check-ins.
+  const [lockerFor, setLockerFor] = useState<Person | null>(null);
+  const lockerOf = new Map(lockers.loans.map((l) => [l.memberId, l]));
+  const cameToday: Person[] = [...new Map(checkins.filter((ci) => ci.member).map((ci) => [ci.member!.id, { id: ci.member!.id, name: ci.member!.name }])).values()];
   const [pending, startTransition] = useTransition();
 
   // No check-out: a visit counts as "in the gym" for 90 minutes, like the public crowd page.
@@ -118,6 +125,17 @@ export function CheckInClient({
         </div>
       </div>
 
+      <LockerPanel
+        loans={lockers.loans}
+        counts={lockers.counts}
+        people={members.map((m) => ({ id: m.id, name: m.name }))}
+        recent={cameToday}
+        isOwner={lockers.isOwner}
+        notReady={lockers.notReady}
+        picked={lockerFor}
+        onPick={setLockerFor}
+      />
+
       {attempts.length > 0 && (
         <div className="mb-4 rounded-xl border border-coral bg-panel p-[18px]">
           <h3 className="m-0 mb-1 font-heading text-sm text-coral">สแกนแล้วเช็กอินไม่ได้ วันนี้ {attempts.length} ครั้ง</h3>
@@ -164,9 +182,27 @@ export function CheckInClient({
                   </span>
                 )}
               </span>
-              <span className="whitespace-nowrap text-[12.5px] text-text-faint">
-                {ci.activity ? `${ACTIVITY_LABEL[ci.activity]} · ` : ""}
-                {formatTimeTh(ci.checked_in_at)} น.
+              <span className="flex flex-shrink-0 items-center gap-2.5 whitespace-nowrap text-[12.5px] text-text-faint">
+                {ci.member && !lockers.notReady && (lockerOf.has(ci.member.id) ? (
+                  <span className="rounded-md bg-volt/15 px-2 py-0.5 font-semibold text-volt">
+                    ตู้{ZONE_LABEL[lockerOf.get(ci.member.id)!.zone]} {lockerOf.get(ci.member.id)!.number}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLockerFor({ id: ci.member!.id, name: ci.member!.name });
+                      document.getElementById("lockers")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border-strong bg-transparent px-2 py-1 text-[12px] font-semibold text-text-hi hover:border-volt"
+                  >
+                    <KeyRound size={11} /> ยืมล็อกเกอร์
+                  </button>
+                ))}
+                <span>
+                  {ci.activity ? `${ACTIVITY_LABEL[ci.activity]} · ` : ""}
+                  {formatTimeTh(ci.checked_in_at)} น.
+                </span>
               </span>
             </div>
           );
