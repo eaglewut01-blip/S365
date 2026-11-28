@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Clock, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select } from "@/components/ui/Input";
-import { bookClass, cancelBooking, createClass } from "@/lib/actions/classes";
+import { bookClass, cancelBooking, createClass, deleteClass } from "@/lib/actions/classes";
 import { dayLabelTh } from "@/lib/format";
+import { CLASS_NAMES } from "@/lib/class-names";
 import type { ClassRow, Member } from "@/types/database";
 
 export interface ClassWithBookings extends ClassRow {
@@ -15,13 +17,7 @@ export interface ClassWithBookings extends ClassRow {
   class_bookings: { id: string; status: "booked" | "waitlist"; member: { id: string; name: string } }[];
 }
 
-function NewClassForm({
-  trainers,
-  onClose,
-}: {
-  trainers: { id: string; full_name: string }[];
-  onClose: () => void;
-}) {
+function NewClassForm({ onClose }: { onClose: () => void }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -41,26 +37,24 @@ function NewClassForm({
             else onClose();
           })
         }
-        className="grid grid-cols-[1.4fr_1fr_1fr_0.9fr_0.7fr_auto] gap-2.5"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-[1.3fr_1.1fr_0.9fr_0.8fr_0.7fr_auto]"
       >
-        <Input name="name" placeholder="ชื่อคลาส" required />
-        <Select name="trainer_id" defaultValue="">
-          <option value="">ไม่ระบุเทรนเนอร์</option>
-          {trainers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.full_name}
-            </option>
+        <Input name="name" placeholder="ชื่อคลาส" list="class-names" required className="col-span-2 sm:col-span-1" />
+        <datalist id="class-names">
+          {CLASS_NAMES.map((name) => (
+            <option key={name} value={name} />
           ))}
-        </Select>
-        <Select name="day_of_week" defaultValue={String(new Date().getDay())}>
-          {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+        </datalist>
+        <Input name="instructor_name" placeholder="ครูผู้สอน เช่น K.Maya" />
+        <Select name="day_of_week" defaultValue={String(new Date().getDay())} aria-label="วัน">
+          {[1, 2, 3, 4, 5, 6, 0].map((d) => (
             <option key={d} value={d}>
               {dayLabelTh(d)}
             </option>
           ))}
         </Select>
-        <Input type="time" name="start_time" defaultValue="18:00" required />
-        <Input type="number" name="capacity" placeholder="ความจุ" defaultValue={10} min={1} />
+        <Input type="time" name="start_time" defaultValue="18:00" aria-label="เวลาเริ่ม" required />
+        <Input type="number" name="hours" defaultValue={1} min={0.25} max={6} step={0.25} aria-label="กี่ชั่วโมง" title="กี่ชั่วโมง" />
         <Button type="submit" variant="primary" disabled={pending}>
           <Plus size={14} /> เพิ่ม
         </Button>
@@ -90,13 +84,23 @@ function ClassCard({ cls, members }: { cls: ClassWithBookings; members: Member[]
         <div>
           <div className="font-heading text-[15.5px] font-bold text-text-hi">{cls.name}</div>
           <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-text-faint">
-            <Clock size={12} /> {dayLabelTh(cls.day_of_week)} · {cls.start_time?.slice(0, 5)} น. ·{" "}
-            {cls.trainer?.full_name ?? "ไม่ระบุเทรนเนอร์"}
+            <Clock size={12} /> {dayLabelTh(cls.day_of_week)} · {cls.start_time?.slice(0, 5)} น. · {(cls.duration_minutes ?? 60) / 60} ชม. ·{" "}
+            {cls.instructor_name || cls.trainer?.full_name || "ไม่ระบุครู"}
           </div>
         </div>
-        <Badge tone={full ? "overdue" : "neutral"}>
-          {booked.length}/{cls.capacity}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge tone={full ? "overdue" : "neutral"}>
+            {booked.length}/{cls.capacity}
+          </Badge>
+          <button
+            onClick={() => {
+              if (window.confirm(`ลบคลาส ${cls.name} ออกจากตาราง`)) startTransition(async () => void (await deleteClass(cls.id)));
+            }}
+            className="cursor-pointer border-none bg-transparent p-0 text-[12px] text-text-faint underline hover:text-coral"
+          >
+            ลบ
+          </button>
+        </div>
       </div>
 
       <div className="mt-3.5 border-t border-border pt-3">
@@ -160,27 +164,33 @@ function ClassCard({ cls, members }: { cls: ClassWithBookings; members: Member[]
 export function ScheduleClient({
   classes,
   members,
-  trainers,
 }: {
   classes: ClassWithBookings[];
   members: Member[];
-  trainers: { id: string; full_name: string }[];
 }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="p-7">
+    <div className="p-4 sm:p-7">
       <PageHeader
         title="ตารางคลาส"
         subtitle="พิมพ์ชื่อสมาชิกในช่องค้นหาเพื่อจองคลาส — ถ้าคลาสเต็มจะเข้าคิวรอโดยอัตโนมัติ"
         action={
-          <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
-            <Plus size={14} /> เพิ่มคลาส
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              href="/owner/schedule/poster"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-strong px-3.5 py-2 font-body text-[13.5px] font-semibold text-text-hi no-underline hover:bg-white/5"
+            >
+              สร้างภาพตารางคลาส
+            </Link>
+            <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
+              <Plus size={14} /> เพิ่มคลาส
+            </Button>
+          </div>
         }
       />
-      {showForm && <NewClassForm trainers={trainers} onClose={() => setShowForm(false)} />}
-      <div className="grid grid-cols-2 gap-4">
+      {showForm && <NewClassForm onClose={() => setShowForm(false)} />}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {classes.map((cl) => (
           <ClassCard key={cl.id} cls={cl} members={members} />
         ))}

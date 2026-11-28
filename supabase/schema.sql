@@ -426,13 +426,16 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Never take the role or branch from the sign-up request itself: the server
+  -- sets them afterwards (setAccountProfile). memberships.sql replaces this
+  -- function with one that starts every account as 'pending'.
   insert into public.profiles (id, role, full_name, phone, branch_id)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'role', 'member'),
+    'member',
     coalesce(new.raw_user_meta_data ->> 'full_name', new.email),
     new.raw_user_meta_data ->> 'phone',
-    nullif(new.raw_user_meta_data ->> 'branch_id', '')::uuid
+    null
   );
   return new;
 end;

@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarClock, CalendarDays, ClipboardCheck } from "lucide-react";
+import { CalendarClock, CalendarDays, PenLine, ShoppingCart } from "lucide-react";
 import { PortalNav, type NavItem } from "./PortalNav";
 
 const items: NavItem[] = [
+  { href: "/trainer/pt-sessions", label: "ให้ลูกค้าเซ็น", icon: PenLine },
   { href: "/trainer/schedule", label: "ลงตารางของฉัน", icon: CalendarClock },
+  { href: "/trainer/sell", label: "ขาย", icon: ShoppingCart },
   { href: "/trainer", label: "คลาสของฉัน", icon: CalendarDays },
-  { href: "/trainer/pt-sessions", label: "เซสชัน PT", icon: ClipboardCheck },
 ];
 
 export function TrainerSidebar({ name }: { name: string }) {

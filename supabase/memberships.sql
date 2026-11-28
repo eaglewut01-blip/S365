@@ -124,6 +124,17 @@ alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check
   check (role in ('owner', 'staff', 'trainer', 'member', 'pending'));
 
+-- Who trains the client for a PT sale, kept on the sale so monthly figures can
+-- be split by trainer; and the trainer's name carried over from the previous
+-- system for clients whose trainer has no account here yet.
+alter table public.member_purchases add column if not exists trainer_id uuid references public.profiles (id) on delete set null;
+alter table public.members add column if not exists legacy_trainer text;
+
+-- Group classes: the instructor is typed in (teachers change week to week)
+-- and a class has a length, so the timetable image can be drawn from them.
+alter table public.classes add column if not exists instructor_name text;
+alter table public.classes add column if not exists duration_minutes integer not null default 60;
+
 -- The secret printed inside the front-desk QR code.
 alter table public.branches add column if not exists checkin_token text;
 create unique index if not exists branches_checkin_token_idx on public.branches (checkin_token) where checkin_token is not null;
@@ -163,6 +174,12 @@ begin
    where m.id = v_member;
 
   if tg_op = 'INSERT' then
+    -- What the member now holds, and who trains them, follow from the sale itself.
+    if new.kind = 'membership' then
+      update public.members set plan = new.package_name, status = 'active' where id = new.member_id;
+    elsif new.trainer_id is not null then
+      update public.members set pt_trainer_id = new.trainer_id where id = new.member_id;
+    end if;
     if new.amount > 0 then
       insert into public.payments (member_id, branch_id, amount, paid_at, purchase_id)
       values (new.member_id, new.branch_id, new.amount, new.purchased_on::timestamp at time zone 'Asia/Bangkok', new.id);
@@ -178,6 +195,27 @@ begin
   return null;
 end;
 $$;
+
+-- New or repeat is decided here from the member's whole history, so it is
+-- right whoever records the sale.
+create or replace function public.prepare_member_purchase()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.is_renewal := exists (
+    select 1 from public.member_purchases p where p.member_id = new.member_id and p.kind = new.kind
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists before_member_purchase_insert on public.member_purchases;
+create trigger before_member_purchase_insert
+  before insert on public.member_purchases
+  for each row execute function public.prepare_member_purchase();
 
 drop trigger if exists on_member_purchase_change on public.member_purchases;
 create trigger on_member_purchase_change
@@ -443,3 +481,140 @@ drop policy if exists "slots_staff_all" on public.trainer_slots;
 create policy "slots_staff_all" on public.trainer_slots for all
   to authenticated using (public.is_staff() and branch_id = public.current_branch())
   with check (public.is_staff() and branch_id = public.current_branch());
+
+-- Trainers sell too: they may add a customer and record their own sales
+-- (always under their own name), attach the slip, and see their team's names.
+drop policy if exists "purchases_trainer_insert" on public.member_purchases;
+create policy "purchases_trainer_insert" on public.member_purchases for insert
+  to authenticated with check (public.current_role() = 'trainer' and branch_id = public.current_branch() and sold_by = auth.uid());
+drop policy if exists "purchases_trainer_select" on public.member_purchases;
+create policy "purchases_trainer_select" on public.member_purchases for select
+  to authenticated using (public.current_role() = 'trainer' and sold_by = auth.uid());
+drop policy if exists "members_trainer_insert" on public.members;
+create policy "members_trainer_insert" on public.members for insert
+  to authenticated with check (public.current_role() = 'trainer' and branch_id = public.current_branch());
+drop policy if exists "profiles_select_team" on public.profiles;
+create policy "profiles_select_team" on public.profiles for select
+  to authenticated using (
+    public.current_role() = 'trainer' and branch_id = public.current_branch() and role in ('owner', 'staff', 'trainer')
+  );
+drop policy if exists "payment_proofs_trainer_insert" on storage.objects;
+create policy "payment_proofs_trainer_insert" on storage.objects for insert
+  to authenticated with check (
+    bucket_id = 'payment-proofs' and public.current_role() = 'trainer' and (storage.foldername(name))[1] = public.current_branch()::text
+  );
+
+-- ============================================================================
+-- New accounts never choose their own role.
+-- The role and branch used to be read from what the sign-up request said
+-- about itself, so anyone holding the site's public key could have registered
+-- as an owner. Every new account now starts as "pending" with no branch; the
+-- server sets the real role afterwards (see setAccountProfile in
+-- src/lib/supabase/admin.ts).
+-- ============================================================================
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, role, full_name, phone, branch_id)
+  values (
+    new.id,
+    'pending',
+    left(coalesce(nullif(btrim(new.raw_user_meta_data ->> 'full_name'), ''), new.email), 60),
+    left(new.raw_user_meta_data ->> 'phone', 30),
+    null
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+-- ============================================================================
+-- PT sign-off: after a session the client signs on the trainer's phone, and
+-- that one step records the session and takes one hour off the client's PT.
+-- ============================================================================
+alter table public.pt_sessions add column if not exists signature text;
+
+create or replace function public.sign_pt_session(p_member uuid, p_signature text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.current_role();
+  v_branch uuid := public.current_branch();
+  v_member public.members%rowtype;
+  v_now timestamptz := now();
+  v_local timestamp := (now() at time zone 'Asia/Bangkok');
+  v_id uuid;
+begin
+  if auth.uid() is null or v_branch is null or v_role is null or v_role not in ('trainer', 'owner', 'staff') then
+    return jsonb_build_object('ok', false, 'reason', 'not_allowed');
+  end if;
+  -- A signature is pen strokes written as "M x y L x y ...", nothing else.
+  if p_signature is null or length(p_signature) < 30 or length(p_signature) > 20000 or p_signature !~ '^[ML0-9 ]+$' then
+    return jsonb_build_object('ok', false, 'reason', 'no_signature');
+  end if;
+
+  select * into v_member from public.members where id = p_member and branch_id = v_branch for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found');
+  end if;
+  if v_member.pt_remaining <= 0 then
+    return jsonb_build_object('ok', false, 'reason', 'no_hours');
+  end if;
+  -- A second tap, or the same session signed twice, must not take two hours.
+  if exists (
+    select 1 from public.pt_sessions
+    where member_id = p_member and trainer_id = auth.uid() and signature is not null and logged_at > v_now - interval '10 minutes'
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'just_signed', 'remaining', v_member.pt_remaining);
+  end if;
+
+  insert into public.pt_sessions (member_id, trainer_id, branch_id, session_date, session_time, status, logged_at, resolved_at, signature)
+  values (p_member, auth.uid(), v_branch, v_local::date, v_local::time, 'approved', v_now, v_now, p_signature)
+  returning id into v_id;
+
+  update public.members
+    set pt_remaining = pt_remaining - 1,
+        pt_trainer_id = case when pt_trainer_id is null and v_role = 'trainer' then auth.uid() else pt_trainer_id end
+    where id = p_member;
+
+  return jsonb_build_object('ok', true, 'id', v_id, 'remaining', v_member.pt_remaining - 1);
+end;
+$$;
+
+revoke all on function public.sign_pt_session(uuid, text) from public, anon;
+grant execute on function public.sign_pt_session(uuid, text) to authenticated;
+
+-- Owner or staff: cancel a session that was signed by mistake and give the hour back.
+create or replace function public.void_pt_session(p_session uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_session public.pt_sessions%rowtype;
+begin
+  if not public.is_staff() then
+    return jsonb_build_object('ok', false, 'reason', 'not_allowed');
+  end if;
+  select * into v_session from public.pt_sessions where id = p_session and branch_id = public.current_branch() for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_found');
+  end if;
+  delete from public.pt_sessions where id = p_session;
+  if v_session.status = 'approved' then
+    update public.members set pt_remaining = least(pt_total, pt_remaining + 1) where id = v_session.member_id;
+  end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+revoke all on function public.void_pt_session(uuid) from public, anon;
+grant execute on function public.void_pt_session(uuid) to authenticated;

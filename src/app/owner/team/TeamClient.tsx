@@ -72,7 +72,7 @@ function WaitingRow({ person, login }: { person: Profile; login: string }) {
           อนุมัติเป็นเทรนเนอร์
         </Button>
         <Button disabled={pending} onClick={() => run(() => approveApplicant(person.id, "staff"))}>
-          อนุมัติเป็นพนักงาน
+          อนุมัติเป็นเซลล์ / พนักงาน
         </Button>
         <Button
           variant="danger"
@@ -109,12 +109,20 @@ export function TeamClient({
 
   return (
     <div className="max-w-4xl p-4 sm:p-7">
-      <PageHeader title="ทีมงาน" subtitle="สร้างไอดีและรหัสผ่านให้พนักงานและเทรนเนอร์ได้เลย ไม่ต้องใช้อีเมล แล้วแจ้งให้เขาเข้าที่หน้า /login" />
+      <PageHeader title="ทีมงาน" subtitle="เซลล์และพนักงานเข้าหลังบ้านได้ทุกเมนู ยกเว้นเว็บไซต์และทีมงาน เทรนเนอร์มีหน้าของตัวเองสำหรับลงตารางและขาย สร้างไอดีและรหัสผ่านให้ได้เลย ไม่ต้องใช้อีเมล" />
 
-      {adminProblem && (
+      {adminProblem ? (
         <div className="mb-4 rounded-xl border border-coral bg-coral-bg p-[18px] text-[13.5px] leading-relaxed text-text-hi">
-          ระบบสร้างบัญชีให้ทีมงานยังไม่ได้ เพราะค่า <code>SUPABASE_SERVICE_ROLE_KEY</code> ใน Vercel ไม่ถูกต้องหรือยังไม่ได้ใส่ ({adminProblem})
+          <div className="mb-1 font-semibold">ยังสร้างบัญชี รับสมัคร และอนุมัติทีมงานไม่ได้</div>
+          <div>{adminProblem}</div>
+          <ol className="mt-2 mb-0 pl-5">
+            <li>เปิด Supabase เมนู Project Settings แล้วเลือก API Keys คัดลอกคีย์ที่ชื่อ service_role</li>
+            <li>เปิด Vercel โปรเจกต์ s365 เมนู Settings แล้วเลือก Environment Variables แก้ค่า SUPABASE_SERVICE_ROLE_KEY เป็นคีย์ที่คัดลอกมา แล้วกด Save</li>
+            <li>ไปที่ Deployments กดจุดสามจุดของรายการบนสุด เลือก Redeploy รอจนขึ้น Ready แล้วเปิดหน้านี้ใหม่ ถ้ากรอบสีแดงนี้หายไปคือใช้ได้แล้ว</li>
+          </ol>
         </div>
+      ) : (
+        <div className="mb-4 rounded-xl border border-border bg-panel px-4 py-2.5 text-[13px] text-mint">ระบบสร้างบัญชีและรับสมัครทีมงานพร้อมใช้งาน</div>
       )}
 
       <section className={`mb-4 overflow-hidden rounded-xl border bg-panel ${waiting.length ? "border-amber" : "border-border"}`}>
@@ -137,7 +145,7 @@ export function TeamClient({
           <Input name="password" placeholder="รหัสผ่าน 6 ตัวขึ้นไป" autoComplete="off" minLength={6} required />
           <Select name="role" defaultValue="trainer">
             <option value="trainer">เทรนเนอร์</option>
-            <option value="staff">พนักงาน</option>
+            <option value="staff">เซลล์ / พนักงาน</option>
           </Select>
           <Button type="submit" variant="primary" disabled={loginPending}>
             <UserPlus size={14} /> สร้าง
@@ -164,7 +172,7 @@ export function TeamClient({
           <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
             <Select name="role" defaultValue="trainer" className="!w-auto" aria-label="บทบาทของทุกคนในรายการ">
               <option value="trainer">ทุกคนเป็นเทรนเนอร์</option>
-              <option value="staff">ทุกคนเป็นพนักงาน</option>
+              <option value="staff">ทุกคนเป็นเซลล์ / พนักงาน</option>
             </Select>
             <Button type="submit" variant="primary" disabled={bulkPending}>
               {bulkPending ? "กำลังสร้าง..." : "สร้างทั้งหมด"}
@@ -189,7 +197,7 @@ export function TeamClient({
           <Input name="full_name" placeholder="ชื่อ-นามสกุล" required />
           <Input name="phone" placeholder="เบอร์โทร" />
           <Select name="role" defaultValue="staff">
-            <option value="staff">พนักงาน</option>
+            <option value="staff">เซลล์ / พนักงาน</option>
             <option value="trainer">เทรนเนอร์</option>
           </Select>
           <Button type="submit" disabled={invitePending}>
@@ -213,7 +221,7 @@ export function TeamClient({
               <div className="text-[13.5px] text-text-hi">{t.full_name}</div>
               <div className="break-all text-[13px] text-text-lo">{logins[t.id] || "-"}</div>
               <div>
-                <Badge tone={t.role === "trainer" ? "due" : "active"}>{t.role === "trainer" ? "เทรนเนอร์" : "พนักงาน"}</Badge>
+                <Badge tone={t.role === "trainer" ? "due" : "active"}>{t.role === "trainer" ? "เทรนเนอร์" : "เซลล์ / พนักงาน"}</Badge>
               </div>
               <PasswordButton userId={t.id} name={t.full_name} />
             </div>

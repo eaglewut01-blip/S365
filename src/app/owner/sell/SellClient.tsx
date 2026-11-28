@@ -56,6 +56,7 @@ function SaleForm({
   team,
   currentUserId,
   branchId,
+  sellerLocked,
   onDone,
 }: {
   customers: Customer[];
@@ -63,6 +64,7 @@ function SaleForm({
   team: TeamMember[];
   currentUserId: string;
   branchId: string;
+  sellerLocked?: boolean;
   onDone: (result: SaleResult) => void;
 }) {
   const [isNew, setIsNew] = useState(false);
@@ -303,7 +305,7 @@ function SaleForm({
                 <Input name="pt_amount" type="number" min={0} step="1" inputMode="numeric" value={ptAmount} onChange={(e) => setPtTyped(e.target.value)} required />
               </Field>
               <Field label="เทรนเนอร์ที่เทรนให้" className="col-span-2">
-                <Select name="pt_trainer_id" key={customer?.id ?? "new"} defaultValue={customer?.pt_trainer_id ?? ""} required>
+                <Select name="pt_trainer_id" key={customer?.id ?? "new"} defaultValue={customer?.pt_trainer_id ?? (sellerLocked ? currentUserId : "")} required>
                   <option value="">เลือกเทรนเนอร์</option>
                   {trainers.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -335,16 +337,24 @@ function SaleForm({
 
       <Step n={3} title="การชำระและผู้ขาย">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Field label="ผู้ขาย (ใช้คิดค่าคอม)">
-            <Select name="sold_by" defaultValue={currentUserId} required>
-              <option value="">เลือกผู้ขาย</option>
-              {team.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          {sellerLocked ? (
+            <Field label="ผู้ขาย">
+              <div className="rounded-lg border border-border bg-panel-raised px-3 py-2 text-[13.5px] text-text-hi">
+                {team.find((t) => t.id === currentUserId)?.full_name ?? "ฉัน"}
+              </div>
+            </Field>
+          ) : (
+            <Field label="ผู้ขาย (ใช้คิดค่าคอม)">
+              <Select name="sold_by" defaultValue={currentUserId} required>
+                <option value="">เลือกผู้ขาย</option>
+                {team.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
           <Field label="วิธีชำระ">
             <Select name="payment_method" defaultValue="transfer">
               {Object.entries(PAYMENT_LABEL).map(([value, label]) => (
@@ -450,6 +460,7 @@ export function SellClient({
   currentUserId,
   branchId,
   missingTables,
+  sellerLocked,
 }: {
   customers: Customer[];
   packages: Package[];
@@ -457,6 +468,8 @@ export function SellClient({
   currentUserId: string;
   branchId: string;
   missingTables: boolean;
+  /** A trainer's own page: the sale is always theirs, and they have no member pages to open. */
+  sellerLocked?: boolean;
 }) {
   const [done, setDone] = useState<SaleResult | null>(null);
   // A new key gives the next sale an empty form.
@@ -490,7 +503,7 @@ export function SellClient({
             >
               ขายรายการต่อไป
             </Button>
-            {done.memberId && (
+            {done.memberId && !sellerLocked && (
               <Link
                 href={`/owner/members/${done.memberId}`}
                 className="inline-flex items-center rounded-lg border border-border-strong px-3.5 py-2 font-body text-[13.5px] font-semibold text-text-hi no-underline hover:bg-white/5"
@@ -501,7 +514,7 @@ export function SellClient({
           </div>
         </div>
       ) : (
-        <SaleForm key={round} customers={customers} packages={packages} team={team} currentUserId={currentUserId} branchId={branchId} onDone={setDone} />
+        <SaleForm key={round} customers={customers} packages={packages} team={team} currentUserId={currentUserId} branchId={branchId} sellerLocked={sellerLocked} onDone={setDone} />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { adminKeyProblem, createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { loginNameOf } from "@/lib/staff-login";
 import type { Profile } from "@/types/database";
@@ -20,14 +20,10 @@ export default async function TeamPage() {
 
   // What each person signs in with. Only the owner sees this page.
   const logins: Record<string, string> = {};
-  let adminProblem = "";
-  try {
-    const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (error) adminProblem = error.message;
+  const adminProblem = await adminKeyProblem();
+  if (!adminProblem) {
+    const { data } = await createAdminClient().auth.admin.listUsers({ page: 1, perPage: 1000 });
     for (const user of data?.users ?? []) logins[user.id] = loginNameOf(user.email);
-  } catch (e) {
-    adminProblem = e instanceof Error ? e.message : "unknown";
   }
 
   const { data: waiting } = await supabase

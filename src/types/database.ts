@@ -40,6 +40,7 @@ export interface Member {
   membership_expires_on: string | null;
   line_user_id: string | null;
   pt_trainer_id: string | null;
+  legacy_trainer?: string | null;
   created_at: string;
 }
 
@@ -51,6 +52,8 @@ export interface ClassRow {
   day_of_week: number;
   start_time: string;
   capacity: number;
+  instructor_name?: string | null;
+  duration_minutes?: number;
   created_at: string;
 }
 
@@ -79,6 +82,7 @@ export interface PtSession {
   status: PtStatus;
   logged_at: string;
   resolved_at: string | null;
+  signature?: string | null;
 }
 
 export type VisitActivity = "weights" | "cardio" | "class";
@@ -118,6 +122,7 @@ export interface MemberPurchase {
   pt_sessions: number;
   is_renewal: boolean;
   proof_path: string | null;
+  trainer_id?: string | null;
   document_paths?: string[] | null;
   note: string | null;
   created_at: string;

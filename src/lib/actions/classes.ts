@@ -10,26 +10,34 @@ export async function createClass(formData: FormData) {
   const supabase = await createClient();
 
   const name = String(formData.get("name") || "").trim();
-  const trainerId = String(formData.get("trainer_id") || "") || null;
+  // The teacher is typed in: who teaches a class changes from week to week.
+  const instructor = String(formData.get("instructor_name") || "").trim();
   const dayOfWeek = Number(formData.get("day_of_week"));
   const startTime = String(formData.get("start_time") || "");
-  const capacity = Number(formData.get("capacity") || 10);
+  const hours = Number(formData.get("hours") || 1);
+  const capacity = Number(formData.get("capacity") || 30);
 
   if (!name || !startTime || Number.isNaN(dayOfWeek)) {
     return { error: "กรอกข้อมูลคลาสให้ครบถ้วน" };
   }
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 6) return { error: "จำนวนชั่วโมงไม่ถูกต้อง" };
 
-  const { error } = await supabase.from("classes").insert({
-    branch_id: staffer.branch_id,
-    name,
-    trainer_id: trainerId,
-    day_of_week: dayOfWeek,
-    start_time: startTime,
-    capacity,
-  });
+  const base = { branch_id: staffer.branch_id, name, trainer_id: null, day_of_week: dayOfWeek, start_time: startTime, capacity };
+  let { error } = await supabase.from("classes").insert({ ...base, instructor_name: instructor || null, duration_minutes: Math.round(hours * 60) });
+  // Before the database update that adds teacher and length, save the class without them.
+  if (error && /instructor_name|duration_minutes/.test(error.message)) ({ error } = await supabase.from("classes").insert(base));
 
   if (error) return { error: error.message };
 
+  revalidatePath("/owner/schedule");
+  return { success: true };
+}
+
+export async function deleteClass(classId: string) {
+  await requireRole("owner", "staff");
+  const supabase = await createClient();
+  const { error } = await supabase.from("classes").delete().eq("id", classId);
+  if (error) return { error: error.message };
   revalidatePath("/owner/schedule");
   return { success: true };
 }

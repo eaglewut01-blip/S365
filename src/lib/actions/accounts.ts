@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient, setAccountProfile } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
 import { requestOrigin } from "@/lib/request-origin";
@@ -23,13 +23,15 @@ export async function createStaffAccount(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { role, full_name: fullName, phone, branch_id: owner.branch_id },
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName, phone },
     // The invite email opens the page where they choose a password.
     redirectTo: `${await requestOrigin()}/reset-password`,
   });
 
-  if (error) return { error: error.message };
+  if (error || !data.user) return { error: error?.message ?? "ส่งคำเชิญไม่สำเร็จ" };
+  const problem = await setAccountProfile(admin, data.user.id, { role, full_name: fullName, phone, branch_id: owner.branch_id });
+  if (problem) return { error: problem };
 
   revalidatePath("/owner/team");
   return { success: true };
@@ -53,16 +55,18 @@ export async function inviteMemberAccount(memberId: string, email: string) {
 
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      role: "member",
-      full_name: member.name,
-      phone: member.phone,
-      branch_id: member.branch_id ?? staffer.branch_id,
-    },
+    data: { full_name: member.name, phone: member.phone },
     redirectTo: `${await requestOrigin()}/reset-password`,
   });
 
   if (error || !data.user) return { error: error?.message ?? "ส่งคำเชิญไม่สำเร็จ" };
+  const problem = await setAccountProfile(admin, data.user.id, {
+    role: "member",
+    full_name: member.name,
+    phone: member.phone,
+    branch_id: member.branch_id ?? staffer.branch_id,
+  });
+  if (problem) return { error: problem };
 
   const { error: linkError } = await supabase
     .from("members")
@@ -91,15 +95,22 @@ async function createLogin(entry: NewLogin, branchId: string): Promise<string | 
   const problem = checkLogin(entry);
   if (problem) return problem;
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  const { data, error } = await admin.auth.admin.createUser({
     email: `${entry.loginId}@${STAFF_LOGIN_DOMAIN}`,
     password: entry.password,
     email_confirm: true,
-    user_metadata: { role: entry.role, full_name: entry.fullName, phone: entry.phone ?? "", branch_id: branchId },
+    user_metadata: { full_name: entry.fullName, phone: entry.phone ?? "" },
   });
-  if (!error) return null;
-  if (error.code === "email_exists" || /already/i.test(error.message)) return "ไอดีนี้มีคนใช้แล้ว";
-  return error.message;
+  if (error || !data.user) {
+    if (error && (error.code === "email_exists" || /already/i.test(error.message))) return "ไอดีนี้มีคนใช้แล้ว";
+    return error?.message ?? "สร้างบัญชีไม่สำเร็จ";
+  }
+  const profileProblem = await setAccountProfile(admin, data.user.id, { role: entry.role, full_name: entry.fullName, phone: entry.phone, branch_id: branchId });
+  if (profileProblem) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    return profileProblem;
+  }
+  return null;
 }
 
 // Owner only: create a staff or trainer login with an ID and a password the

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
 import { todayBangkok } from "@/lib/dates";
+import { isSignature } from "@/lib/signature";
 
 // Trainer logs that a session happened. Always starts "pending" — RLS
 // enforces trainer_id = the logged-in trainer and status = 'pending'.
@@ -77,6 +78,43 @@ export async function resolvePtDispute(sessionId: string, resolution: "approved"
 
   if (error) return { error: error.message };
 
+  revalidatePath("/owner/pt-sessions");
+  return { success: true };
+}
+
+const SIGN_PROBLEM: Record<string, string> = {
+  not_allowed: "บัญชีนี้ยังไม่มีสิทธิ์ตัดชั่วโมง",
+  no_signature: "ให้ลูกค้าเซ็นชื่อก่อน",
+  not_found: "ไม่พบลูกค้าคนนี้",
+  no_hours: "ลูกค้าคนนี้ไม่มีชั่วโมง PT เหลือแล้ว",
+  just_signed: "ลูกค้าคนนี้เพิ่งเซ็นไปเมื่อไม่กี่นาทีนี้ ระบบตัดชั่วโมงให้แล้ว ไม่ตัดซ้ำ",
+};
+
+// The client signs on the trainer's phone after a session. One step records
+// the session with the signature and takes one hour off (sign_pt_session).
+export async function signPtSession(memberId: string, signature: string): Promise<{ error?: string; remaining?: number }> {
+  await requireRole("trainer", "owner", "staff");
+  if (!memberId) return { error: "เลือกลูกค้า" };
+  if (!isSignature(signature)) return { error: SIGN_PROBLEM.no_signature };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("sign_pt_session", { p_member: memberId, p_signature: signature });
+  if (error) return { error: "ยังตัดชั่วโมงไม่ได้ แจ้งเจ้าของยิม (ฐานข้อมูลยังไม่ได้อัปเดต)" };
+
+  const result = data as { ok: boolean; reason?: string; remaining?: number };
+  if (!result?.ok) return { error: SIGN_PROBLEM[result?.reason ?? ""] ?? "ตัดชั่วโมงไม่สำเร็จ" };
+
+  revalidatePath("/trainer/pt-sessions");
+  revalidatePath("/owner/pt-sessions");
+  return { remaining: result.remaining };
+}
+
+// Owner/staff: a session signed by mistake is removed and the hour returned.
+export async function voidPtSession(sessionId: string): Promise<{ error?: string; success?: boolean }> {
+  await requireRole("owner", "staff");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("void_pt_session", { p_session: sessionId });
+  if (error || !(data as { ok?: boolean })?.ok) return { error: "ยกเลิกไม่สำเร็จ" };
   revalidatePath("/owner/pt-sessions");
   return { success: true };
 }

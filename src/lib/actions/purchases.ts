@@ -124,7 +124,8 @@ export async function sellPt(formData: FormData): Promise<Result> {
     .eq("member_id", memberId)
     .eq("kind", "pt");
 
-  const { error } = await supabase.from("member_purchases").insert({
+  const { error } = await insertPurchase(supabase, {
+    trainer_id: trainerId,
     branch_id: staffer.branch_id,
     member_id: memberId,
     package_id: null,
@@ -151,18 +152,31 @@ export async function sellPt(formData: FormData): Promise<Result> {
 
 const MAX_DOCUMENTS = 12;
 
+type PurchaseRow = Record<string, unknown>;
+
+// Saves a sale. Columns added by later database updates (who trains) are
+// left out when the database does not have them yet, so selling never stops.
+async function insertPurchase(supabase: Awaited<ReturnType<typeof createClient>>, row: PurchaseRow) {
+  const first = await supabase.from("member_purchases").insert(row);
+  if (!first.error || !("trainer_id" in row) || !/trainer_id/.test(first.error.message)) return first;
+  const { trainer_id: _dropped, ...rest } = row;
+  void _dropped;
+  return supabase.from("member_purchases").insert(rest);
+}
+
 export type SaleResult = { error?: string; success?: boolean; memberId?: string; memberName?: string; lines?: string[] };
 
 // The one-screen sale: a seller picks or adds the customer, then records a
 // membership, PT hours, or both, with the trainer and how it was paid.
 // Everything is checked before anything is saved.
 export async function recordSale(formData: FormData): Promise<SaleResult> {
-  const staffer = await requireRole("owner", "staff");
+  const staffer = await requireRole("owner", "staff", "trainer");
   if (!staffer.branch_id) return { error: "บัญชีนี้ยังไม่ได้ผูกกับสาขา" };
   const supabase = await createClient();
   const field = (name: string) => String(formData.get(name) || "").trim();
 
-  const soldBy = field("sold_by");
+  // A trainer's sale is always their own; staff choose who sold.
+  const soldBy = staffer.role === "trainer" ? staffer.id : field("sold_by");
   const method = (field("payment_method") || "transfer") as PaymentMethod;
   const purchasedOn = field("purchased_on") || todayBangkok();
   const note = field("note") || null;
@@ -251,9 +265,9 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
   }
 
   if (hours >= 1) {
-    const { error } = await supabase.from("member_purchases").insert({
+    const { error } = await insertPurchase(supabase, {
       ...base, package_id: null, kind: "pt", package_name: `PT ${hours} ชั่วโมง${bonus ? ` แถม ${bonus}` : ""}`, amount: ptAmount,
-      starts_on: null, ends_on: null, pt_sessions: hours + bonus, is_renewal: await earlier("pt"),
+      starts_on: null, ends_on: null, pt_sessions: hours + bonus, is_renewal: await earlier("pt"), trainer_id: trainerId,
     });
     if (error) {
       return { error: `${lines.length ? "บันทึกค่าสมาชิกแล้ว แต่" : ""}บันทึก PT ไม่สำเร็จ: ${error.message}`, memberId, memberName, lines };
@@ -264,6 +278,7 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
 
   refresh(memberId);
   revalidatePath("/owner/sell");
+  revalidatePath("/trainer/sell");
   return { success: true, memberId, memberName, lines };
 }
 
@@ -304,4 +319,43 @@ export async function updateMemberDetails(formData: FormData): Promise<Result> {
   if (error) return { error: error.message };
   refresh(memberId);
   return { success: true };
+}
+
+// Set or clear the trainer who looks after a member's PT.
+export async function assignPtTrainer(memberId: string, trainerId: string): Promise<Result> {
+  await requireRole("owner", "staff");
+  const supabase = await createClient();
+  const { error } = await supabase.from("members").update({ pt_trainer_id: trainerId || null }).eq("id", memberId);
+  if (error) return { error: error.message };
+  refresh(memberId);
+  return { success: true };
+}
+
+// Clients carried over from the previous system keep their trainer's name
+// (members.legacy_trainer). Once that trainer has an account here under the
+// same name, this hands those clients to the account.
+export async function linkLegacyTrainers(): Promise<Result & { linked?: number }> {
+  const staffer = await requireRole("owner", "staff");
+  if (!staffer.branch_id) return { error: "บัญชีนี้ยังไม่ได้ผูกกับสาขา" };
+  const supabase = await createClient();
+  const { data: trainers } = await supabase.from("profiles").select("id, full_name").eq("branch_id", staffer.branch_id).eq("role", "trainer");
+
+  let linked = 0;
+  for (const trainer of trainers ?? []) {
+    const name = trainer.full_name.trim().replace(/^PT[.\s]*/i, "");
+    if (!name) continue;
+    const { data, error } = await supabase
+      .from("members")
+      .update({ pt_trainer_id: trainer.id })
+      .eq("branch_id", staffer.branch_id)
+      .is("pt_trainer_id", null)
+      .ilike("legacy_trainer", name)
+      .select("id");
+    if (error) return { error: error.message };
+    linked += data?.length ?? 0;
+  }
+
+  revalidatePath("/owner/trainer-clients");
+  revalidatePath("/owner");
+  return { success: true, linked };
 }
