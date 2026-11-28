@@ -9,7 +9,7 @@ export default async function TrainerClientsPage() {
   const trainer = await requireRole("trainer");
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("members")
     .select("id, name, phone, pt_total, pt_remaining, membership_expires_on, last_visit")
     .eq("branch_id", trainer.branch_id ?? "")
@@ -28,5 +28,5 @@ export default async function TrainerClientsPage() {
     lastVisit: m.last_visit,
   }));
 
-  return <MyClients clients={clients} />;
+  return <MyClients clients={clients} loadError={error?.message ?? ""} />;
 }

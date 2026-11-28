@@ -31,7 +31,7 @@ function ClientButton({ client, onPick }: { client: SignClient; onPick: () => vo
   );
 }
 
-export function SignOffClient({ clients, signed, today, trainerName, startWith }: { clients: SignClient[]; signed: SignedSession[]; today: string; trainerName: string; startWith?: string }) {
+export function SignOffClient({ clients, signed, today, trainerName, startWith, loadError }: { clients: SignClient[]; signed: SignedSession[]; today: string; trainerName: string; startWith?: string; loadError?: string }) {
   const router = useRouter();
   const pad = useRef<SignaturePadHandle>(null);
   // Arriving from a client's page opens straight on that client.
@@ -132,6 +132,13 @@ export function SignOffClient({ clients, signed, today, trainerName, startWith }
         <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-faint" />
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาชื่อลูกค้า" aria-label="ค้นหาชื่อลูกค้า" className="!py-3 !pl-9 !text-[15px]" />
       </label>
+
+      {/* Say plainly when the list could not be read, instead of looking like "no such client". */}
+      {loadError ? (
+        <div className="mb-4 rounded-xl border border-coral bg-coral-bg px-4 py-3 text-[13.5px] leading-relaxed text-text-hi">โหลดรายชื่อลูกค้าไม่ได้ แจ้งเจ้าของยิมพร้อมข้อความนี้: {loadError}</div>
+      ) : (
+        <div className="-mt-2 mb-4 text-[12.5px] text-text-faint">ค้นได้จากลูกค้าที่ยังมีชั่วโมง PT เหลือทั้งยิม {clients.length} คน</div>
+      )}
 
       {query.trim() ? (
         <div className="flex flex-col gap-2">

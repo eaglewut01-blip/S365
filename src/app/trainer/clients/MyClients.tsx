@@ -23,7 +23,7 @@ const matches: Record<Filter, (c: MyClient) => boolean> = {
   out: (c) => c.left <= 0,
 };
 
-export function MyClients({ clients }: { clients: MyClient[] }) {
+export function MyClients({ clients, loadError }: { clients: MyClient[]; loadError?: string }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
@@ -40,6 +40,8 @@ export function MyClients({ clients }: { clients: MyClient[] }) {
     <div className="mx-auto max-w-2xl p-4 sm:p-7">
       <h1 className="m-0 mb-1 font-heading text-2xl font-bold text-text-hi">ลูกค้าของฉัน</h1>
       <p className="mt-0 mb-4 text-[13.5px] text-text-lo">เฉพาะลูกค้า PT ที่ผูกกับชื่อคุณ แตะชื่อเพื่อดูรายละเอียด แตะเบอร์เพื่อโทร</p>
+
+      {loadError && <div className="mb-4 rounded-xl border border-coral bg-coral-bg px-4 py-3 text-[13.5px] leading-relaxed text-text-hi">โหลดรายชื่อลูกค้าไม่ได้ แจ้งเจ้าของยิมพร้อมข้อความนี้: {loadError}</div>}
 
       <div className="mb-3 flex flex-wrap gap-2">
         {FILTERS.map((f) => {

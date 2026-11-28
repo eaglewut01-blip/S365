@@ -12,7 +12,7 @@ export default async function TrainerSignOffPage({ searchParams }: { searchParam
   const supabase = await createClient();
   const today = todayBangkok();
 
-  const [{ data: members }, { data: sessions }] = await Promise.all([
+  const [{ data: members, error: membersError }, { data: sessions }] = await Promise.all([
     supabase
       .from("members")
       .select("id, name, pt_total, pt_remaining, pt_trainer_id")
@@ -43,5 +43,5 @@ export default async function TrainerSignOffPage({ searchParams }: { searchParam
     .map((s) => ({ id: s.id, date: s.session_date, time: s.session_time.slice(0, 5), name: s.member?.name ?? "", signature: s.signature }));
 
   const asked = (await searchParams).m;
-  return <SignOffClient clients={clients} signed={signed} today={today} trainerName={trainer.full_name} startWith={asked} />;
+  return <SignOffClient clients={clients} signed={signed} today={today} trainerName={trainer.full_name} startWith={asked} loadError={membersError?.message ?? (trainer.branch_id ? "" : "บัญชีนี้ยังไม่ได้ผูกกับสาขา")} />;
 }
