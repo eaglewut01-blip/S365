@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { CircleCheck, Paperclip, Search } from "lucide-react";
+import { Camera, CircleCheck, Paperclip, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -49,6 +49,51 @@ const toggleClass = (active: boolean) =>
   `cursor-pointer rounded-lg border px-3.5 py-2 font-body text-[13.5px] font-semibold ${
     active ? "border-volt bg-volt/10 text-volt" : "border-border bg-transparent text-text-lo hover:text-text-hi"
   }`;
+
+// Two ways to add a photo. On a phone the first button opens the camera
+// straight away (for a contract or a card receipt on the counter); the second
+// picks an existing picture, such as a transfer slip saved from a banking app.
+// A computer has no camera to open, so it shows only the second.
+function PhotoButtons({
+  uploading,
+  onFiles,
+  multiple,
+  shootLabel,
+  pickLabel,
+}: {
+  uploading?: boolean;
+  onFiles: (files: FileList | null) => void;
+  multiple?: boolean;
+  shootLabel: string;
+  pickLabel: string;
+}) {
+  const button = "cursor-pointer items-center gap-2 rounded-lg px-3.5 py-2.5 font-body text-[13.5px] font-semibold";
+  const input = (extra: { capture?: "environment"; multiple?: boolean }) => (
+    <input
+      type="file"
+      accept="image/*"
+      className="sr-only"
+      disabled={uploading}
+      {...extra}
+      onChange={(e) => {
+        onFiles(e.target.files);
+        e.target.value = "";
+      }}
+    />
+  );
+  return (
+    <div className="flex flex-wrap gap-2">
+      <label className={`hidden border border-volt bg-volt text-volt-ink [@media(pointer:coarse)]:inline-flex ${button}`}>
+        <Camera size={15} /> {uploading ? "กำลังแนบ..." : shootLabel}
+        {input({ capture: "environment" })}
+      </label>
+      <label className={`inline-flex border border-dashed border-border-strong text-text-hi hover:bg-white/5 ${button}`}>
+        <Paperclip size={14} /> {uploading ? "กำลังแนบ..." : pickLabel}
+        {input({ multiple })}
+      </label>
+    </div>
+  );
+}
 
 function SaleForm({
   customers,
@@ -419,19 +464,7 @@ function SaleForm({
               </button>
             </div>
           ) : (
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-strong px-3.5 py-2.5 font-body text-[13.5px] font-semibold text-text-hi hover:bg-white/5">
-              <Paperclip size={14} /> {proofState.uploading ? "กำลังแนบ..." : "แนบรูปภาพ"}
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                disabled={proofState.uploading}
-                onChange={(e) => {
-                  void attach(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <PhotoButtons uploading={proofState.uploading} onFiles={(files) => void attach(files?.[0])} shootLabel="ถ่ายรูปสลิป" pickLabel="แนบรูปภาพ" />
           )}
           {proofState.error && <div className="mt-1.5 text-[12.5px] text-coral">แนบไฟล์ไม่สำเร็จ: {proofState.error}</div>}
         </div>
@@ -457,20 +490,13 @@ function SaleForm({
             </div>
           ))}
           {documents.length < MAX_DOCUMENTS && (
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-strong px-3.5 py-2.5 font-body text-[13.5px] font-semibold text-text-hi hover:bg-white/5">
-              <Paperclip size={14} /> {documentState.uploading ? "กำลังแนบ..." : documents.length ? "แนบรูปเพิ่ม" : "แนบรูปสัญญาหรือเอกสาร"}
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="sr-only"
-                disabled={documentState.uploading}
-                onChange={(e) => {
-                  void attachDocuments(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <PhotoButtons
+              uploading={documentState.uploading}
+              onFiles={(files) => void attachDocuments(files)}
+              multiple
+              shootLabel={documents.length ? "ถ่ายเพิ่ม" : "ถ่ายรูปสัญญา"}
+              pickLabel={documents.length ? "แนบรูปเพิ่ม" : "แนบรูปสัญญาหรือเอกสาร"}
+            />
           )}
           {documentState.error && <div className="mt-1.5 text-[12.5px] text-coral">แนบไฟล์ไม่สำเร็จ: {documentState.error}</div>}
         </div>
