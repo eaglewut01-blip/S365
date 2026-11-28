@@ -5,7 +5,7 @@ import { createAdminClient, setAccountProfile } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/session";
 import { requestOrigin } from "@/lib/request-origin";
-import { LOGIN_ID_PATTERN, STAFF_LOGIN_DOMAIN, normalizeLoginId } from "@/lib/staff-login";
+import { LOGIN_ID_PATTERN, STAFF_LOGIN_DOMAIN, isIdAccount, loginNameOf, normalizeLoginId } from "@/lib/staff-login";
 import type { Role } from "@/types/database";
 
 // Owner-only: create a login for a new staff member or trainer.
@@ -178,6 +178,56 @@ export async function setStaffPassword(userId: string, password: string): Promis
   const { error } = await admin.auth.admin.updateUserById(userId, { password });
   if (error) return { error: error.message };
   return { success: true };
+}
+
+// Owner only: correct what a team member typed when signing up — the name
+// shown everywhere, the sign-in ID, the role, the phone number.
+export async function updateStaffMember(
+  userId: string,
+  input: { fullName: string; loginId: string; role: string; phone: string; workStart: string }
+): Promise<{ error?: string; success?: boolean }> {
+  const owner = await requireRole("owner");
+  const fullName = input.fullName.trim();
+  const phone = input.phone.trim();
+  const loginId = normalizeLoginId(input.loginId);
+  if (!fullName) return { error: "กรอกชื่อ" };
+  if (fullName.length > 60) return { error: "ชื่อยาวเกินไป" };
+  if (input.role !== "staff" && input.role !== "trainer") return { error: "เลือกบทบาท" };
+  const workStart = input.workStart.trim().slice(0, 5);
+  if (workStart && !/^([01]\d|2[0-3]):[0-5]\d$/.test(workStart)) return { error: "เวลาเข้างานไม่ถูกต้อง" };
+
+  const supabase = await createClient();
+  const { data: target } = await supabase.from("profiles").select("id, role, branch_id").eq("id", userId).maybeSingle();
+  if (!target || target.branch_id !== owner.branch_id || !["staff", "trainer"].includes(target.role)) {
+    return { error: "ไม่พบทีมงานคนนี้" };
+  }
+
+  const admin = createAdminClient();
+  // The sign-in ID can be changed only for accounts that sign in with an ID;
+  // an account invited by email keeps its email.
+  const { data: account } = await admin.auth.admin.getUserById(userId);
+  const email = account?.user?.email ?? "";
+  if (isIdAccount(email) && loginId && loginId !== loginNameOf(email)) {
+    if (!LOGIN_ID_PATTERN.test(loginId)) return { error: "ไอดีใช้ได้เฉพาะ a-z ตัวเลข จุด ขีด ยาว 2 ถึง 30 ตัว" };
+    const { error } = await admin.auth.admin.updateUserById(userId, { email: `${loginId}@${STAFF_LOGIN_DOMAIN}`, email_confirm: true });
+    if (error) return { error: error.code === "email_exists" || /already/i.test(error.message) ? "ไอดีนี้มีคนใช้แล้ว" : error.message };
+  }
+
+  const basics = { full_name: fullName, role: input.role, phone: phone || null };
+  const { error } = await admin.from("profiles").update({ ...basics, work_start: workStart || null }).eq("id", userId);
+  let note = "";
+  if (error) {
+    // The work_start column comes with the latest database update; save the
+    // rest and say so if it has not been run yet.
+    const { error: basicError } = await admin.from("profiles").update(basics).eq("id", userId);
+    if (basicError) return { error: basicError.message };
+    if (workStart) note = "บันทึกข้อมูลอื่นแล้ว แต่ยังตั้งเวลาเข้างานไม่ได้ ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน";
+  }
+
+  revalidatePath("/owner/team");
+  revalidatePath("/owner/attendance");
+  revalidatePath("/owner/trainer-clients");
+  return note ? { error: note } : { success: true };
 }
 
 async function pendingApplicant(userId: string, ownerBranch: string | null) {

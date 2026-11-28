@@ -693,3 +693,7 @@ $$;
 
 revoke all on function public.clock_in(text) from public, anon;
 grant execute on function public.clock_in(text) to authenticated;
+
+-- The time each team member is due at work, set by the owner on the team
+-- page. Empty means no fixed time, so that person is never shown as late.
+alter table public.profiles add column if not exists work_start time;

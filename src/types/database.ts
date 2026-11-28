@@ -19,6 +19,7 @@ export interface Profile {
   phone: string | null;
   branch_id: string | null;
   created_at: string;
+  work_start?: string | null;
 }
 
 export interface Member {

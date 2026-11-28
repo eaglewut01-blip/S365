@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { KeyRound, UserPlus } from "lucide-react";
+import { KeyRound, Pencil, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { approveApplicant, createStaffAccount, createStaffLogin, createStaffLoginsBulk, rejectApplicant, setStaffPassword } from "@/lib/actions/accounts";
+import { approveApplicant, createStaffAccount, createStaffLogin, createStaffLoginsBulk, rejectApplicant, setStaffPassword, updateStaffMember } from "@/lib/actions/accounts";
 import type { Profile } from "@/types/database";
 
 type Message = { error?: string; success?: boolean } | null;
@@ -50,6 +50,107 @@ function PasswordButton({ userId, name }: { userId: string; name: string }) {
       {message?.error && <span className="text-[11px] text-coral">{message.error}</span>}
       {message?.success && <span className="text-[11px] text-mint">เปลี่ยนแล้ว</span>}
     </div>
+  );
+}
+
+// One team member: shown as a row, and turned into a small form by the edit
+// button so the owner can fix a name, ID, role or phone typed wrongly.
+function MemberRow({ person, login }: { person: Profile; login: string }) {
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+  const usesId = Boolean(login) && !login.includes("@");
+  const start = person.work_start?.slice(0, 5) ?? "";
+  const [form, setForm] = useState({ fullName: person.full_name, loginId: login, role: person.role as string, phone: person.phone ?? "", workStart: start });
+  const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const grid = "grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto] items-center gap-x-3 border-t border-border bg-panel px-4 py-3";
+
+  if (!editing) {
+    return (
+      <div className={grid}>
+        <div className="text-[13.5px] text-text-hi">
+          {person.full_name}
+          {person.phone && <div className="text-xs text-text-faint">{person.phone}</div>}
+        </div>
+        <div className="break-all text-[13px] text-text-lo">{login || "-"}</div>
+        <div>
+          <Badge tone={person.role === "trainer" ? "due" : "active"}>{person.role === "trainer" ? "เทรนเนอร์" : "เซลล์ / พนักงาน"}</Badge>
+        </div>
+        <div className="text-[13px] text-text-lo tabular-nums">{start ? `${start} น.` : "-"}</div>
+        <PasswordButton userId={person.id} name={person.full_name} />
+        <button
+          onClick={() => {
+            setForm({ fullName: person.full_name, loginId: login, role: person.role, phone: person.phone ?? "", workStart: start });
+            setEditing(true);
+          }}
+          aria-label={`แก้ข้อมูลของ ${person.full_name}`}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border-strong bg-transparent px-2.5 py-1.5 text-[12.5px] font-semibold text-text-hi hover:bg-white/5"
+        >
+          <Pencil size={12} /> แก้
+        </button>
+      </div>
+    );
+  }
+
+  const save = () =>
+    startTransition(async () => {
+      const res = await updateStaffMember(person.id, form);
+      setError(res.error ?? "");
+      if (res.success) setEditing(false);
+    });
+
+  return (
+    <form
+      className="border-t border-border bg-panel-raised px-4 py-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+        <label className="block">
+          <span className="mb-1 block text-xs text-text-lo">ชื่อที่ใช้เรียก</span>
+          <Input name="full_name" value={form.fullName} onChange={set("fullName")} maxLength={60} required />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-text-lo">{usesId ? "ไอดีที่ใช้เข้าระบบ" : "อีเมลที่ใช้เข้า (แก้ที่นี่ไม่ได้)"}</span>
+          <Input name="login_id" value={form.loginId} onChange={set("loginId")} disabled={!usesId} autoCapitalize="none" spellCheck={false} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-text-lo">บทบาท</span>
+          <Select name="role" value={form.role} onChange={set("role")}>
+            <option value="trainer">เทรนเนอร์</option>
+            <option value="staff">เซลล์ / พนักงาน</option>
+          </Select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-text-lo">เบอร์โทร</span>
+          <Input name="phone" type="tel" value={form.phone} onChange={set("phone")} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-text-lo">เวลาเข้างาน (เว้นว่างได้)</span>
+          <Input name="work_start" type="time" value={form.workStart} onChange={set("workStart")} />
+        </label>
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <Button type="submit" variant="primary" disabled={pending}>
+          {pending ? "กำลังบันทึก..." : "บันทึก"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending}
+          onClick={() => {
+            setEditing(false);
+            setError("");
+          }}
+        >
+          ยกเลิก
+        </Button>
+        {usesId && <span className="text-xs text-text-faint">ถ้าเปลี่ยนไอดี ต้องบอกเจ้าตัวให้ใช้ไอดีใหม่เข้าระบบ รหัสผ่านเดิม</span>}
+        {error && <span className="text-[12.5px] text-coral">{error}</span>}
+      </div>
+    </form>
   );
 }
 
@@ -209,22 +310,17 @@ export function TeamClient({
       </details>
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-[1.3fr_1.2fr_0.8fr_1.3fr] bg-panel px-4 py-2.5 text-xs text-text-faint">
+        <div className="min-w-[800px]">
+          <div className="grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto] gap-x-3 bg-panel px-4 py-2.5 text-xs text-text-faint">
             <div>ชื่อ</div>
             <div>ไอดีหรืออีเมลที่ใช้เข้า</div>
             <div>บทบาท</div>
+            <div>เวลาเข้างาน</div>
             <div>รหัสผ่าน</div>
+            <div className="w-[58px]">แก้ไข</div>
           </div>
           {team.map((t) => (
-            <div key={t.id} className="grid grid-cols-[1.3fr_1.2fr_0.8fr_1.3fr] items-center border-t border-border bg-panel px-4 py-3">
-              <div className="text-[13.5px] text-text-hi">{t.full_name}</div>
-              <div className="break-all text-[13px] text-text-lo">{logins[t.id] || "-"}</div>
-              <div>
-                <Badge tone={t.role === "trainer" ? "due" : "active"}>{t.role === "trainer" ? "เทรนเนอร์" : "เซลล์ / พนักงาน"}</Badge>
-              </div>
-              <PasswordButton userId={t.id} name={t.full_name} />
-            </div>
+            <MemberRow key={t.id} person={t} login={logins[t.id] ?? ""} />
           ))}
           {team.length === 0 && <div className="bg-panel px-4 py-6 text-center text-[13px] text-text-faint">ยังไม่มีทีมงาน</div>}
         </div>
