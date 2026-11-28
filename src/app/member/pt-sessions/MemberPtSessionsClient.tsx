@@ -10,7 +10,7 @@ import { approvePtSession, disputePtSession } from "@/lib/actions/pt-sessions";
 import type { PtSession } from "@/types/database";
 
 export interface MemberPtSession extends PtSession {
-  trainer: { full_name: string };
+  trainer?: { full_name: string };
 }
 
 export function MemberPtSessionsClient({
@@ -43,7 +43,7 @@ export function MemberPtSessionsClient({
             className="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel px-[18px] py-3.5"
           >
             <div>
-              <div className="text-sm font-medium text-text-hi">{s.trainer?.full_name}</div>
+              <div className="text-sm font-medium text-text-hi">{s.trainer?.full_name ?? "เซสชัน PT"}</div>
               <div className="mt-0.5 text-[12.5px] text-text-faint">
                 {s.session_date} เวลา {s.session_time?.slice(0, 5)} น.
               </div>

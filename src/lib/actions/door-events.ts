@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { byId } from "@/lib/supabase/lookup";
 import { getCurrentProfile, isStaffRole } from "@/lib/session";
 import type { VisitActivity } from "@/types/database";
 
@@ -47,7 +48,7 @@ export async function doorEventsSince(since: string): Promise<DoorEvent[]> {
       .limit(20),
     supabase
       .from("pt_sessions")
-      .select("id, logged_at, member:members(id, name, pt_remaining), trainer:profiles(full_name)")
+      .select("id, logged_at, member_id, trainer_id")
       .eq("branch_id", profile.branch_id)
       .eq("status", "approved")
       .not("signature", "is", null)
@@ -66,9 +67,18 @@ export async function doorEventsSince(since: string): Promise<DoorEvent[]> {
     if (!row.member) continue;
     events.push({ id: `a-${row.id}`, at: row.created_at, type: "blocked", memberId: row.member.id, name: row.member.name, activity: null, expiresOn: row.member.membership_expires_on, reason: row.reason });
   }
-  for (const row of (signed.data ?? []) as unknown as { id: string; logged_at: string; member: { id: string; name: string; pt_remaining: number } | null; trainer: { full_name: string } | null }[]) {
-    if (!row.member) continue;
-    events.push({ id: `p-${row.id}`, at: row.logged_at, type: "pt", memberId: row.member.id, name: row.member.name, activity: null, expiresOn: null, reason: null, trainer: row.trainer?.full_name ?? "", ptLeft: row.member.pt_remaining });
+  // Names for signed PT sessions are looked up separately; see lib/supabase/lookup.ts.
+  const signedRows = (signed.data ?? []) as { id: string; logged_at: string; member_id: string; trainer_id: string }[];
+  if (signedRows.length > 0) {
+    const [clients, trainers] = await Promise.all([
+      byId<{ id: string; name: string; pt_remaining: number }>(supabase, "members", "id, name, pt_remaining", signedRows.map((r) => r.member_id)),
+      byId<{ id: string; full_name: string }>(supabase, "profiles", "id, full_name", signedRows.map((r) => r.trainer_id)),
+    ]);
+    for (const row of signedRows) {
+      const client = clients.get(row.member_id);
+      if (!client) continue;
+      events.push({ id: `p-${row.id}`, at: row.logged_at, type: "pt", memberId: client.id, name: client.name, activity: null, expiresOn: null, reason: null, trainer: trainers.get(row.trainer_id)?.full_name ?? "", ptLeft: client.pt_remaining });
+    }
   }
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }

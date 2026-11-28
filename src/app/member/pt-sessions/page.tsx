@@ -20,7 +20,7 @@ export default async function MemberPtSessionsPage() {
   const supabase = await createClient();
   const { data: sessions } = await supabase
     .from("pt_sessions")
-    .select("*, trainer:profiles(full_name)")
+    .select("*")
     .eq("member_id", member.id)
     .order("logged_at", { ascending: false });
 

@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { byId } from "@/lib/supabase/lookup";
 import { addMonths, todayBangkok } from "@/lib/dates";
+import type { PtSession } from "@/types/database";
 import { PtSessionsClient, type PtSessionRow } from "./PtSessionsClient";
 
 export const metadata = { title: "เซสชัน PT | S365 Fitness" };
@@ -22,21 +24,27 @@ export default async function OwnerPtSessionsPage({ searchParams }: { searchPara
 
   const { data, error } = await supabase
     .from("pt_sessions")
-    .select("*, member:members(name, pt_total, pt_remaining), trainer:profiles(full_name)")
+    .select("*")
     .eq("branch_id", profile.branch_id ?? "")
     .gte("session_date", start)
     .lt("session_date", next)
     .order("logged_at", { ascending: false })
     .limit(1000);
 
-  const sessions: PtSessionRow[] = ((data ?? []) as unknown as (PtSessionRow & { session_date: string; session_time: string; member: PtSessionRow["member"] | null; trainer: { full_name: string } | null })[]).map((s) => ({
+  // Names are looked up separately rather than embedded; see lib/supabase/lookup.ts.
+  const rows = (data ?? []) as PtSession[];
+  const [members, trainers] = await Promise.all([
+    byId<{ id: string; name: string; pt_total: number; pt_remaining: number }>(supabase, "members", "id, name, pt_total, pt_remaining", rows.map((s) => s.member_id)),
+    byId<{ id: string; full_name: string }>(supabase, "profiles", "id, full_name", rows.map((s) => s.trainer_id)),
+  ]);
+  const sessions: PtSessionRow[] = rows.map((s) => ({
     id: s.id,
     date: s.session_date,
     time: s.session_time.slice(0, 5),
     status: s.status,
     signature: s.signature ?? null,
-    member: s.member ?? { name: "", pt_total: 0, pt_remaining: 0 },
-    trainerName: s.trainer?.full_name ?? "",
+    member: members.get(s.member_id) ?? { name: "", pt_total: 0, pt_remaining: 0 },
+    trainerName: trainers.get(s.trainer_id)?.full_name ?? "",
   }));
 
   const monthLabel = new Date(`${start}T12:00:00Z`).toLocaleDateString("th-TH", { timeZone: "UTC", month: "long", year: "numeric" });

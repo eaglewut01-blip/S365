@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { byId } from "@/lib/supabase/lookup";
 import { addDays, todayBangkok } from "@/lib/dates";
 import { SignOffClient, type SignClient, type SignedSession } from "./SignOffClient";
 
@@ -23,7 +24,7 @@ export default async function TrainerSignOffPage({ searchParams }: { searchParam
       .limit(1000),
     supabase
       .from("pt_sessions")
-      .select("id, session_date, session_time, status, signature, member:members(name)")
+      .select("id, session_date, session_time, status, signature, member_id")
       .eq("trainer_id", trainer.id)
       .gte("session_date", addDays(today, -30))
       .order("logged_at", { ascending: false })
@@ -38,9 +39,10 @@ export default async function TrainerSignOffPage({ searchParams }: { searchParam
     mine: m.pt_trainer_id === trainer.id,
   }));
 
-  const signed: SignedSession[] = ((sessions ?? []) as unknown as { id: string; session_date: string; session_time: string; status: string; signature: string | null; member: { name: string } | null }[])
-    .filter((s) => s.status === "approved")
-    .map((s) => ({ id: s.id, date: s.session_date, time: s.session_time.slice(0, 5), name: s.member?.name ?? "", signature: s.signature }));
+  const done = ((sessions ?? []) as { id: string; session_date: string; session_time: string; status: string; signature: string | null; member_id: string }[]).filter((s) => s.status === "approved");
+  // Client names looked up separately rather than embedded; see lib/supabase/lookup.ts.
+  const names = await byId<{ id: string; name: string }>(supabase, "members", "id, name", done.map((s) => s.member_id));
+  const signed: SignedSession[] = done.map((s) => ({ id: s.id, date: s.session_date, time: s.session_time.slice(0, 5), name: names.get(s.member_id)?.name ?? "", signature: s.signature }));
 
   const asked = (await searchParams).m;
   return <SignOffClient clients={clients} signed={signed} today={today} trainerName={trainer.full_name} startWith={asked} loadError={membersError?.message ?? (trainer.branch_id ? "" : "บัญชีนี้ยังไม่ได้ผูกกับสาขา")} />;
