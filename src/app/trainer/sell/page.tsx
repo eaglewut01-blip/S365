@@ -18,11 +18,11 @@ export default async function TrainerSellPage() {
       supabase.from("members").select("id, name, phone, membership_expires_on, pt_remaining, pt_trainer_id").eq("branch_id", branchId).neq("status", "cancelled").order("name").order("id").range(from, to)
     ),
     supabase.from("packages").select("*").eq("branch_id", branchId).eq("kind", "membership").eq("active", true).order("price"),
-    supabase.from("profiles").select("id, full_name, role").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer"]).order("full_name"),
+    supabase.from("profiles").select("*").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer"]).order("full_name"),
   ]);
 
   // Until the database lets trainers see their team, at least offer themselves.
-  const people = (team.data ?? []) as Pick<Profile, "id" | "full_name" | "role">[];
+  const people: Pick<Profile, "id" | "full_name" | "role">[] = ((team.data ?? []) as Profile[]).filter((t) => !t.counter_only);
   const withSelf = people.some((p) => p.id === profile.id) ? people : [...people, { id: profile.id, full_name: profile.full_name, role: profile.role }];
 
   return (

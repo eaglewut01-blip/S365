@@ -38,13 +38,22 @@ const ownerOnlyItems: NavItem[] = [
   { href: "/owner/team", label: "ทีมงาน", icon: UserCog },
 ];
 
-export function OwnerSidebar({ branchName, isOwner }: { branchName: string; isOwner: boolean }) {
+// The shared front-counter account sees only what the counter needs.
+const counterItems: NavItem[] = [
+  { href: "/owner/checkin", label: "เคาน์เตอร์ เช็คอิน", icon: ScanLine },
+  { href: "/owner/sell", label: "ขาย", icon: ShoppingCart },
+  { href: "/owner/members", label: "สมาชิก", icon: Users },
+  { href: "/owner/trainer-schedule", label: "ตารางเทรนเนอร์", icon: CalendarClock },
+  { href: "/owner/schedule", label: "ตารางคลาส", icon: CalendarDays },
+];
+
+export function OwnerSidebar({ branchName, isOwner, counter }: { branchName: string; isOwner: boolean; counter?: boolean }) {
   return (
     <PortalNav
-      items={isOwner ? [...baseItems, ...ownerOnlyItems] : baseItems}
-      home="/owner"
+      items={counter ? counterItems : isOwner ? [...baseItems, ...ownerOnlyItems] : baseItems}
+      home={counter ? "/owner/checkin" : "/owner"}
       label={branchName}
-      roleLabel="Owner / Staff"
+      roleLabel={counter ? "Counter" : "Owner / Staff"}
     />
   );
 }

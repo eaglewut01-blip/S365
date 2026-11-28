@@ -20,11 +20,13 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 export async function setAccountProfile(
   admin: AdminClient,
   userId: string,
-  profile: { role: string; full_name: string; phone?: string | null; branch_id: string | null }
+  profile: { role: string; full_name: string; phone?: string | null; branch_id: string | null; counter_only?: boolean }
 ): Promise<string | null> {
-  const { error } = await admin
-    .from("profiles")
-    .upsert({ id: userId, role: profile.role, full_name: profile.full_name, phone: profile.phone || null, branch_id: profile.branch_id });
+  const row: Record<string, string | boolean | null> = { id: userId, role: profile.role, full_name: profile.full_name, phone: profile.phone || null, branch_id: profile.branch_id };
+  // counter_only is sent only when set, so everything else works before that column exists.
+  if (profile.counter_only) row.counter_only = true;
+  const { error } = await admin.from("profiles").upsert(row);
+  if (error && profile.counter_only) return "ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน จึงจะสร้างไอดีเคาน์เตอร์ได้";
   return error ? error.message : null;
 }
 

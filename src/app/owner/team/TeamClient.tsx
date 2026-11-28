@@ -61,7 +61,8 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
   const [pending, startTransition] = useTransition();
   const usesId = Boolean(login) && !login.includes("@");
   const start = person.work_start?.slice(0, 5) ?? "";
-  const [form, setForm] = useState({ fullName: person.full_name, loginId: login, role: person.role as string, phone: person.phone ?? "", workStart: start });
+  const shownRole = person.counter_only ? "counter" : (person.role as string);
+  const [form, setForm] = useState({ fullName: person.full_name, loginId: login, role: shownRole, phone: person.phone ?? "", workStart: start });
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const grid = "grid grid-cols-[1.3fr_1.2fr_0.8fr_0.7fr_1.3fr_auto_auto] items-center gap-x-3 border-t border-border bg-panel px-4 py-3";
 
@@ -74,13 +75,13 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
         </div>
         <div className="break-all text-[13px] text-text-lo">{login || "-"}</div>
         <div>
-          <Badge tone={person.role === "trainer" ? "due" : "active"}>{person.role === "trainer" ? "เทรนเนอร์" : "เซลล์ / พนักงาน"}</Badge>
+          <Badge tone={person.role === "trainer" ? "due" : "active"}>{person.counter_only ? "เคาน์เตอร์" : person.role === "trainer" ? "เทรนเนอร์" : "เซลล์ / พนักงาน"}</Badge>
         </div>
         <div className="text-[13px] text-text-lo tabular-nums">{start ? `${start} น.` : "-"}</div>
         <PasswordButton userId={person.id} name={person.full_name} />
         <button
           onClick={() => {
-            setForm({ fullName: person.full_name, loginId: login, role: person.role, phone: person.phone ?? "", workStart: start });
+            setForm({ fullName: person.full_name, loginId: login, role: shownRole, phone: person.phone ?? "", workStart: start });
             setEditing(true);
           }}
           aria-label={`แก้ข้อมูลของ ${person.full_name}`}
@@ -136,6 +137,7 @@ function MemberRow({ person, login }: { person: Profile; login: string }) {
           <Select name="role" value={form.role} onChange={set("role")}>
             <option value="trainer">เทรนเนอร์</option>
             <option value="staff">เซลล์ / พนักงาน</option>
+            <option value="counter">เคาน์เตอร์ (ไอดีกลาง)</option>
           </Select>
         </label>
         <label className="block">
@@ -249,7 +251,7 @@ export function TeamClient({
 
   return (
     <div className="max-w-4xl p-4 sm:p-7">
-      <PageHeader title="ทีมงาน" subtitle="เซลล์และพนักงานเข้าหลังบ้านได้ทุกเมนู ยกเว้นเว็บไซต์และทีมงาน เทรนเนอร์มีหน้าของตัวเองสำหรับลงตารางและขาย สร้างไอดีและรหัสผ่านให้ได้เลย ไม่ต้องใช้อีเมล" />
+      <PageHeader title="ทีมงาน" subtitle="เซลล์และพนักงานเข้าหลังบ้านได้ทุกเมนู ยกเว้นเว็บไซต์และทีมงาน เทรนเนอร์มีหน้าของตัวเองสำหรับลงตารางและขาย ไอดีเคาน์เตอร์เป็นไอดีกลางของคอมหน้าเคาน์เตอร์ เห็นแค่เช็คอิน ขาย สมาชิก และตาราง สร้างไอดีและรหัสผ่านให้ได้เลย ไม่ต้องใช้อีเมล" />
 
       {adminProblem ? (
         <div className="mb-4 rounded-xl border border-coral bg-coral-bg p-[18px] text-[13.5px] leading-relaxed text-text-hi">
@@ -286,6 +288,7 @@ export function TeamClient({
           <Select name="role" defaultValue="trainer">
             <option value="trainer">เทรนเนอร์</option>
             <option value="staff">เซลล์ / พนักงาน</option>
+            <option value="counter">เคาน์เตอร์ (ไอดีกลาง)</option>
           </Select>
           <Button type="submit" variant="primary" disabled={loginPending}>
             <UserPlus size={14} /> สร้าง

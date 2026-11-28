@@ -25,15 +25,15 @@ export default async function SellPage() {
         .range(from, to)
     ),
     supabase.from("packages").select("*").eq("branch_id", branchId).eq("kind", "membership").eq("active", true).order("price"),
-    supabase.from("profiles").select("id, full_name, role").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer"]).order("full_name"),
+    supabase.from("profiles").select("*").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer"]).order("full_name"),
   ]);
 
   return (
     <SellClient
       customers={customers.data}
       packages={(packages.data ?? []) as Package[]}
-      team={(team.data ?? []) as Pick<Profile, "id" | "full_name" | "role">[]}
-      currentUserId={profile.id}
+      team={((team.data ?? []) as Profile[]).filter((t) => !t.counter_only)}
+      currentUserId={profile.counter_only ? "" : profile.id}
       branchId={branchId}
       missingTables={Boolean(packages.error)}
     />

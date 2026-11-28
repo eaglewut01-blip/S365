@@ -81,13 +81,15 @@ export async function inviteMemberAccount(memberId: string, email: string) {
 
 const MIN_STAFF_PASSWORD = 6;
 
-type NewLogin = { fullName: string; loginId: string; password: string; role: Role; phone?: string };
+// "counter" is how the forms name a shared front-counter account: it is
+// stored as staff with counter_only set.
+type NewLogin = { fullName: string; loginId: string; password: string; role: Role | "counter"; phone?: string };
 
 function checkLogin(entry: NewLogin): string | null {
   if (!entry.fullName) return "กรอกชื่อ";
   if (!LOGIN_ID_PATTERN.test(entry.loginId)) return "ไอดีใช้ได้เฉพาะ a-z ตัวเลข จุด ขีด ยาว 2 ถึง 30 ตัว";
   if (entry.password.length < MIN_STAFF_PASSWORD) return `รหัสผ่านต้องยาวอย่างน้อย ${MIN_STAFF_PASSWORD} ตัว`;
-  if (!["staff", "trainer"].includes(entry.role)) return "เลือกบทบาท";
+  if (!["staff", "trainer", "counter"].includes(entry.role)) return "เลือกบทบาท";
   return null;
 }
 
@@ -105,7 +107,8 @@ async function createLogin(entry: NewLogin, branchId: string): Promise<string | 
     if (error && (error.code === "email_exists" || /already/i.test(error.message))) return "ไอดีนี้มีคนใช้แล้ว";
     return error?.message ?? "สร้างบัญชีไม่สำเร็จ";
   }
-  const profileProblem = await setAccountProfile(admin, data.user.id, { role: entry.role, full_name: entry.fullName, phone: entry.phone, branch_id: branchId });
+  const counter = entry.role === "counter";
+  const profileProblem = await setAccountProfile(admin, data.user.id, { role: counter ? "staff" : entry.role, full_name: entry.fullName, phone: entry.phone, branch_id: branchId, counter_only: counter });
   if (profileProblem) {
     await admin.auth.admin.deleteUser(data.user.id);
     return profileProblem;
@@ -124,7 +127,7 @@ export async function createStaffLogin(formData: FormData): Promise<{ error?: st
       fullName: String(formData.get("full_name") || "").trim(),
       loginId: normalizeLoginId(String(formData.get("login_id") || "")),
       password: String(formData.get("password") || ""),
-      role: String(formData.get("role") || "trainer") as Role,
+      role: String(formData.get("role") || "trainer") as NewLogin["role"],
       phone: String(formData.get("phone") || "").trim(),
     },
     owner.branch_id
@@ -192,7 +195,8 @@ export async function updateStaffMember(
   const loginId = normalizeLoginId(input.loginId);
   if (!fullName) return { error: "กรอกชื่อ" };
   if (fullName.length > 60) return { error: "ชื่อยาวเกินไป" };
-  if (input.role !== "staff" && input.role !== "trainer") return { error: "เลือกบทบาท" };
+  if (input.role !== "staff" && input.role !== "trainer" && input.role !== "counter") return { error: "เลือกบทบาท" };
+  const counter = input.role === "counter";
   const workStart = input.workStart.trim().slice(0, 5);
   if (workStart && !/^([01]\d|2[0-3]):[0-5]\d$/.test(workStart)) return { error: "เวลาเข้างานไม่ถูกต้อง" };
 
@@ -213,15 +217,15 @@ export async function updateStaffMember(
     if (error) return { error: error.code === "email_exists" || /already/i.test(error.message) ? "ไอดีนี้มีคนใช้แล้ว" : error.message };
   }
 
-  const basics = { full_name: fullName, role: input.role, phone: phone || null };
-  const { error } = await admin.from("profiles").update({ ...basics, work_start: workStart || null }).eq("id", userId);
+  const basics = { full_name: fullName, role: counter ? "staff" : input.role, phone: phone || null };
+  const { error } = await admin.from("profiles").update({ ...basics, work_start: workStart || null, counter_only: counter }).eq("id", userId);
   let note = "";
   if (error) {
     // The work_start column comes with the latest database update; save the
     // rest and say so if it has not been run yet.
     const { error: basicError } = await admin.from("profiles").update(basics).eq("id", userId);
     if (basicError) return { error: basicError.message };
-    if (workStart) note = "บันทึกข้อมูลอื่นแล้ว แต่ยังตั้งเวลาเข้างานไม่ได้ ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน";
+    if (workStart || counter) note = "บันทึกข้อมูลอื่นแล้ว แต่ยังตั้งเวลาเข้างานหรือบัญชีเคาน์เตอร์ไม่ได้ ต้องรันคำสั่งฐานข้อมูลรอบล่าสุดก่อน";
   }
 
   revalidatePath("/owner/team");

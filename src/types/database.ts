@@ -22,6 +22,8 @@ export interface Profile {
   branch_id: string | null;
   created_at: string;
   work_start?: string | null;
+  // A shared front-counter account: staff rights, counter screens only.
+  counter_only?: boolean;
 }
 
 export interface Member {

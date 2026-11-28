@@ -23,15 +23,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const start = `${month}-01`;
   const next = addMonths(start, 1);
 
-  const teamQuery = (columns: string) => supabase.from("profiles").select(columns).eq("branch_id", branchId).in("role", ["staff", "trainer"]).order("role").order("full_name");
-  const [withStart, attendance] = await Promise.all([
-    teamQuery("id, full_name, role, work_start"),
+  const [team, attendance] = await Promise.all([
+    supabase.from("profiles").select("*").eq("branch_id", branchId).in("role", ["staff", "trainer"]).order("role").order("full_name"),
     supabase.from("staff_attendance").select("id, profile_id, work_date, clocked_in_at").eq("branch_id", branchId).gte("work_date", start).lt("work_date", next).limit(2000),
   ]);
 
-  // work_start arrives with the latest database update; do without it until then.
-  const team = withStart.error ? await teamQuery("id, full_name, role") : withStart;
-  const people = (team.data ?? []) as unknown as { id: string; full_name: string; role: string; work_start?: string | null }[];
+  // A shared counter account is not a person, so it has no attendance.
+  const people = ((team.data ?? []) as { id: string; full_name: string; role: string; work_start?: string | null; counter_only?: boolean }[]).filter((p) => !p.counter_only);
   const dueAt = new Map(people.map((p) => [p.id, p.work_start ? p.work_start.slice(0, 5) : ""]));
   // Minutes late for one arrival; 0 when on time or when no time is set.
   const lateBy = (id: string, instant: string) => {

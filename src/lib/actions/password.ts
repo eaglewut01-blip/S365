@@ -81,7 +81,8 @@ export async function setPassword(_prev: PasswordFormState, formData: FormData):
     return { error: "ตั้งรหัสผ่านไม่สำเร็จ ลองใหม่อีกครั้ง" };
   }
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   const role = profile?.role as Role | undefined;
-  redirect(role ? ROLE_HOME[role] : "/login");
+  // A shared counter account goes straight to the counter screen.
+  redirect(role === "staff" && profile?.counter_only ? "/owner/checkin" : role ? ROLE_HOME[role] : "/login");
 }

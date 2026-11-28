@@ -729,3 +729,8 @@ $$;
 
 revoke all on function public.team_schedule(date) from public, anon;
 grant execute on function public.team_schedule(date) to authenticated;
+
+-- A shared account for the front-counter computer. It is a staff account that
+-- the app keeps to the counter screens (check-in, selling, member look-up);
+-- see COUNTER_PATHS in src/lib/supabase/middleware.ts.
+alter table public.profiles add column if not exists counter_only boolean not null default false;

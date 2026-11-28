@@ -18,7 +18,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   const [purchases, packages, team] = await Promise.all([
     supabase.from("member_purchases").select("*").eq("member_id", id).order("purchased_on", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("packages").select("*").eq("branch_id", branchId).eq("active", true).order("kind").order("price"),
-    supabase.from("profiles").select("id, full_name, role").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer", "left"]).order("full_name"),
+    supabase.from("profiles").select("*").eq("branch_id", branchId).in("role", ["owner", "staff", "trainer", "left"]).order("full_name"),
   ]);
 
   return (
@@ -26,8 +26,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       member={member}
       purchases={(purchases.data ?? []) as MemberPurchase[]}
       packages={(packages.data ?? []) as Package[]}
-      team={(team.data ?? []) as Pick<Profile, "id" | "full_name" | "role">[]}
-      currentUserId={profile.id}
+      team={((team.data ?? []) as Profile[]).filter((t) => !t.counter_only)}
+      currentUserId={profile.counter_only ? "" : profile.id}
       isOwner={profile.role === "owner"}
       missingTables={Boolean(purchases.error)}
     />

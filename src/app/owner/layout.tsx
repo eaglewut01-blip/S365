@@ -19,7 +19,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen flex-col bg-base md:flex-row print:block print:bg-white">
-      <OwnerSidebar branchName={branchName} isOwner={profile.role === "owner"} />
+      <OwnerSidebar branchName={branchName} isOwner={profile.role === "owner"} counter={profile.role === "staff" && profile.counter_only === true} />
       <div className="min-w-0 flex-1 overflow-y-auto print:overflow-visible">{children}</div>
       <DoorWatcher />
     </div>

@@ -34,7 +34,7 @@ export async function login(_prevState: { error: string } | null, formData: Form
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("*")
     .eq("id", data.user.id)
     .single();
 
@@ -46,7 +46,8 @@ export async function login(_prevState: { error: string } | null, formData: Form
   if (after) jar.delete(AFTER_LOGIN_COOKIE);
   if (role && role !== "member" && role !== "pending" && role !== "left" && /^\/work(\?[\w=&%.~-]*)?$/.test(after)) redirect(after);
 
-  redirect(role ? ROLE_HOME[role] : "/login");
+  // A shared counter account goes straight to the counter screen.
+  redirect(role === "staff" && profile?.counter_only ? "/owner/checkin" : role ? ROLE_HOME[role] : "/login");
 }
 
 export async function logout() {

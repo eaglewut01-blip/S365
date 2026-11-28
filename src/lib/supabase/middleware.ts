@@ -12,6 +12,9 @@ const ROLE_HOME: Record<Role, string> = {
 };
 
 const PUBLIC_PATHS = ["/login"];
+// The only back-office screens a shared front-counter account may open.
+const COUNTER_HOME = "/owner/checkin";
+const COUNTER_PATHS = ["/owner/checkin", "/owner/sell", "/owner/members", "/owner/trainer-schedule", "/owner/schedule", "/owner/proof"];
 export const AFTER_LOGIN_COOKIE = "s365_after_login";
 
 export async function updateSession(request: NextRequest) {
@@ -57,14 +60,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    // counter_only arrives with a later database update; fall back to the
+    // role alone until that has been run.
+    const withCounter = await supabase.from("profiles").select("role, counter_only").eq("id", user.id).single();
+    const profile: { role?: string; counter_only?: boolean } | null = withCounter.error
+      ? (await supabase.from("profiles").select("role").eq("id", user.id).single()).data
+      : withCounter.data;
 
     const role = profile?.role as Role | undefined;
-    const home = role ? ROLE_HOME[role] : "/login";
+    const counter = role === "staff" && profile?.counter_only === true;
+    const home = counter ? COUNTER_HOME : role ? ROLE_HOME[role] : "/login";
 
     if (path === "/login") {
       const url = request.nextUrl.clone();
@@ -84,7 +89,9 @@ export async function updateSession(request: NextRequest) {
       (inMemberArea && role === "member") ||
       (!inOwnerArea && !inTrainerArea && !inMemberArea);
 
-    if (!allowed) {
+    const counterAllowed = !counter || !inOwnerArea || COUNTER_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+
+    if (!allowed || !counterAllowed) {
       const url = request.nextUrl.clone();
       url.pathname = home;
       return NextResponse.redirect(url);
