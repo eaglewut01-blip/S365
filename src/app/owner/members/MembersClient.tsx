@@ -62,10 +62,12 @@ function InviteButton({ memberId }: { memberId: string }) {
   );
 }
 
-type Filter = "all" | "soon" | "expired" | "pt_low" | "none";
+type Filter = "all" | "active" | "soon30" | "soon" | "expired" | "pt_low" | "none";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "ทั้งหมด" },
+  { key: "active", label: "ยังไม่หมดอายุ" },
+  { key: "soon30", label: "เหลือไม่เกิน 30 วัน" },
   { key: "soon", label: "ใกล้หมดใน 7 วัน" },
   { key: "expired", label: "หมดอายุแล้ว" },
   { key: "pt_low", label: "PT ใกล้หมด" },
@@ -73,7 +75,9 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 function matches(m: Member, filter: Filter) {
-  const { state } = expiryState(m.membership_expires_on);
+  const { state, daysLeft } = expiryState(m.membership_expires_on);
+  if (filter === "active") return state === "ok" || state === "soon";
+  if (filter === "soon30") return daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
   if (filter === "soon") return state === "soon";
   if (filter === "expired") return state === "expired";
   if (filter === "none") return state === "none";
@@ -163,7 +167,11 @@ export function MembersClient({ members }: { members: Member[] }) {
           return (
             <button
               key={f.key}
-              onClick={() => reset(setFilter)(f.key)}
+              onClick={() => {
+                reset(setFilter)(f.key);
+                // Lists for calling people to renew read best with the soonest end date first.
+                if (f.key === "active" || f.key === "soon30" || f.key === "soon") setSort({ key: "expiry", asc: true });
+              }}
               aria-pressed={filter === f.key}
               className={`cursor-pointer rounded-full border px-3 py-1.5 font-body text-[12.5px] ${
                 filter === f.key ? "border-volt bg-volt/10 font-semibold text-volt" : "border-border bg-transparent text-text-lo hover:text-text-hi"
@@ -229,9 +237,17 @@ export function MembersClient({ members }: { members: Member[] }) {
             const expiry = expiryState(m.membership_expires_on);
             return (
               <div key={m.id} className={`grid ${columns} items-center border-t border-border bg-panel px-4 py-3`}>
-                <Link href={`/owner/members/${m.id}`} className="block no-underline hover:[&>div:first-child]:text-volt">
-                  <div className="font-body text-[13.5px] font-medium text-text-hi">{m.name}</div>
-                  <div className="text-xs text-text-faint">{m.phone ?? "ไม่มีเบอร์โทร"}</div>
+                <div>
+                  <Link href={`/owner/members/${m.id}`} className="block font-body text-[13.5px] font-medium text-text-hi no-underline hover:text-volt">
+                    {m.name}
+                  </Link>
+                  {m.phone ? (
+                    <a href={`tel:${m.phone.replace(/[^0-9+]/g, "")}`} className="text-xs text-text-lo no-underline hover:text-volt" title="กดเพื่อโทร">
+                      {m.phone}
+                    </a>
+                  ) : (
+                    <div className="text-xs text-text-faint">ไม่มีเบอร์โทร</div>
+                  )}
                   {/* On a phone the expiry column is off screen, so repeat it here. */}
                   <div
                     className={`mt-0.5 text-xs sm:hidden ${
@@ -240,7 +256,7 @@ export function MembersClient({ members }: { members: Member[] }) {
                   >
                     {expiryLabel(m.membership_expires_on)}
                   </div>
-                </Link>
+                </div>
                 <div className="text-[13px] text-text-lo">{m.plan}</div>
                 <div>
                   <div
