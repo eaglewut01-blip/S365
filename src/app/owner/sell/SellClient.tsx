@@ -22,6 +22,7 @@ export type Customer = {
   pt_trainer_id: string | null;
 };
 type TeamMember = Pick<Profile, "id" | "full_name" | "role">;
+const MAX_DOCUMENTS = 12;
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
@@ -91,6 +92,23 @@ function SaleForm({
     } catch (e) {
       setProof(null);
       setProofState({ error: e instanceof Error ? e.message : "แนบไฟล์ไม่สำเร็จ" });
+    }
+  };
+
+  // Contract and other papers: several photos, sent one after another.
+  const [documents, setDocuments] = useState<{ path: string; name: string }[]>([]);
+  const [documentState, setDocumentState] = useState<{ uploading?: boolean; error?: string }>({});
+  const attachDocuments = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setDocumentState({ uploading: true });
+    try {
+      for (const file of Array.from(files).slice(0, MAX_DOCUMENTS - documents.length)) {
+        const path = await uploadPaymentProof(branchId, file);
+        setDocuments((list) => [...list, { path, name: file.name }]);
+      }
+      setDocumentState({});
+    } catch (e) {
+      setDocumentState({ error: e instanceof Error ? e.message : "แนบไฟล์ไม่สำเร็จ" });
     }
   };
 
@@ -373,10 +391,49 @@ function SaleForm({
           )}
           {proofState.error && <div className="mt-1.5 text-[12.5px] text-coral">แนบไฟล์ไม่สำเร็จ: {proofState.error}</div>}
         </div>
+
+        <div className="mt-4">
+          <div className="mb-1.5 text-[12.5px] text-text-lo">สัญญาที่ลูกค้าเซ็น และเอกสารอื่น (ไม่บังคับ แนบได้หลายรูป)</div>
+          {documents.map((doc, i) => (
+            <div key={doc.path} className="mb-1.5 flex flex-wrap items-center gap-3 rounded-lg border border-mint bg-panel-raised px-3.5 py-2 text-[13px]">
+              <input type="hidden" name="document_paths" value={doc.path} />
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-mint">
+                <Paperclip size={13} className="flex-shrink-0" />{" "}
+                <span className="truncate">
+                  รูปที่ {i + 1}: {doc.name}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setDocuments((list) => list.filter((d) => d.path !== doc.path))}
+                className="cursor-pointer border-none bg-transparent p-0 text-[12.5px] text-text-lo underline hover:text-coral"
+              >
+                เอาออก
+              </button>
+            </div>
+          ))}
+          {documents.length < MAX_DOCUMENTS && (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-strong px-3.5 py-2.5 font-body text-[13.5px] font-semibold text-text-hi hover:bg-white/5">
+              <Paperclip size={14} /> {documentState.uploading ? "กำลังแนบ..." : documents.length ? "แนบรูปเพิ่ม" : "แนบรูปสัญญาหรือเอกสาร"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                disabled={documentState.uploading}
+                onChange={(e) => {
+                  void attachDocuments(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+          {documentState.error && <div className="mt-1.5 text-[12.5px] text-coral">แนบไฟล์ไม่สำเร็จ: {documentState.error}</div>}
+        </div>
       </Step>
 
       <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t border-border bg-base px-4 py-3 sm:mx-0 sm:px-0">
-        <Button type="submit" variant="primary" disabled={pending || Boolean(proofState.uploading) || (!sellMembership && !sellPt) || (!isNew && !customer)} className="px-6 py-2.5">
+        <Button type="submit" variant="primary" disabled={pending || Boolean(proofState.uploading) || Boolean(documentState.uploading) || (!sellMembership && !sellPt) || (!isNew && !customer)} className="px-6 py-2.5">
           {pending ? "กำลังบันทึก..." : "บันทึกการขาย"}
         </Button>
         <span className="font-body text-[15px] font-semibold text-text-hi">รวม {formatBaht(total)}</span>

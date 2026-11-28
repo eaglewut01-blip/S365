@@ -75,7 +75,7 @@ export function DayForm({ date, slots, trainerId }: { date: string; slots: Train
                 value={row.kind}
                 onChange={(e) => set(hour, { kind: e.target.value as SlotKind | "" })}
                 aria-label={`สถานะเวลา ${hourLabel(hour)}`}
-                className="w-[132px] flex-shrink-0"
+                className="!w-[132px] flex-shrink-0"
               >
                 <option value="">ยังไม่ลง</option>
                 {(Object.keys(SLOT_LABEL) as SlotKind[]).map((kind) => (
@@ -91,7 +91,7 @@ export function DayForm({ date, slots, trainerId }: { date: string; slots: Train
                   onChange={(e) => set(hour, { client: e.target.value })}
                   placeholder="ชื่อลูกค้า"
                   aria-label={`ชื่อลูกค้าเวลา ${hourLabel(hour)}`}
-                  className="min-w-[120px] flex-1"
+                  className="!w-auto min-w-[120px] flex-1"
                 />
               )}
             </div>

@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useTransition, useActionState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, Plus, X, Mail, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Search, Plus, Mail, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select } from "@/components/ui/Input";
-import { addMember, cycleMemberStatus } from "@/lib/actions/members";
+import { cycleMemberStatus } from "@/lib/actions/members";
 import { inviteMemberAccount } from "@/lib/actions/accounts";
 import { daysAgo } from "@/lib/format";
 import { expiryLabel, expiryState, formatDateTh } from "@/lib/dates";
@@ -19,38 +18,6 @@ const STATUS_LABEL: Record<MemberStatus, string> = {
   frozen: "พักการใช้",
   cancelled: "ยกเลิก",
 };
-
-function AddMemberForm({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
-  const [state, formAction, pending] = useActionState(
-    async (_prev: { error?: string } | null, formData: FormData) => {
-      const res = await addMember(formData);
-      // Go straight to the new member's page to record what they bought.
-      if (res?.success && res.id) router.push(`/owner/members/${res.id}`);
-      return res ?? null;
-    },
-    null
-  );
-
-  return (
-    <div className="mb-4 rounded-xl border border-border bg-panel-raised p-[18px]">
-      <div className="mb-3 flex justify-between">
-        <h3 className="m-0 font-heading text-[15px] text-text-hi">เพิ่มสมาชิกใหม่</h3>
-        <button onClick={onClose} aria-label="ปิด" className="cursor-pointer border-none bg-transparent text-text-faint">
-          <X size={16} />
-        </button>
-      </div>
-      <form action={formAction} className="grid grid-cols-1 gap-2.5 sm:grid-cols-[1.3fr_1fr_auto]">
-        <Input name="name" placeholder="ชื่อ-นามสกุล" required />
-        <Input name="phone" type="tel" inputMode="tel" placeholder="เบอร์โทร (ใช้ตอนสแกนเช็กอิน)" />
-        <Button type="submit" variant="primary" disabled={pending}>
-          <Plus size={14} /> เพิ่ม แล้วเลือกแพ็กเกจ
-        </Button>
-      </form>
-      {state?.error && <div className="mt-2 text-[12.5px] text-coral">{state.error}</div>}
-    </div>
-  );
-}
 
 function InviteButton({ memberId }: { memberId: string }) {
   const [open, setOpen] = useState(false);
@@ -75,7 +42,7 @@ function InviteButton({ memberId }: { memberId: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="อีเมลลูกค้า"
-        className="w-40 py-1 text-xs"
+        className="!w-40 py-1 text-xs"
       />
       <button
         disabled={pending || !email}
@@ -134,7 +101,6 @@ export function MembersClient({ members }: { members: Member[] }) {
   const [status, setStatus] = useState<MemberStatus | "">("");
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: "name", asc: true });
   const [shown, setShown] = useState(PAGE);
-  const [showForm, setShowForm] = useState(false);
   const [, startTransition] = useTransition();
 
   // Any change to what is listed starts again from the first page.
@@ -176,15 +142,16 @@ export function MembersClient({ members }: { members: Member[] }) {
     <div className="p-4 sm:p-7">
       <PageHeader
         title="สมาชิก"
-        subtitle={`${members.length.toLocaleString("th-TH")} คนทั้งหมด · กดชื่อเพื่อดูข้อมูลและบันทึกการซื้อแพ็กเกจ · กดหัวตารางเพื่อเรียง`}
+        subtitle={`${members.length.toLocaleString("th-TH")} คนทั้งหมด · กดชื่อเพื่อดูข้อมูล · กดหัวตารางเพื่อเรียง · ลูกค้าใหม่เพิ่มจากหน้าขาย`}
         action={
-          <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
-            <Plus size={14} /> เพิ่มสมาชิก
-          </Button>
+          <Link
+            href="/owner/sell"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-volt bg-volt px-3.5 py-2 font-body text-[13.5px] font-semibold text-volt-ink no-underline hover:brightness-110"
+          >
+            <Plus size={14} /> ขายให้ลูกค้าใหม่
+          </Link>
         }
       />
-
-      {showForm && <AddMemberForm onClose={() => setShowForm(false)} />}
 
       <div className="mb-2.5 flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-xs">
@@ -210,7 +177,7 @@ export function MembersClient({ members }: { members: Member[] }) {
 
       <div className="mb-3.5 flex flex-wrap items-center gap-2 text-[12.5px] text-text-lo">
         <span>กรอง</span>
-        <Select value={plan} onChange={(e) => reset(setPlan)(e.target.value)} aria-label="กรองตามแพ็กเกจ" className="w-auto py-1.5 text-[12.5px]">
+        <Select value={plan} onChange={(e) => reset(setPlan)(e.target.value)} aria-label="กรองตามแพ็กเกจ" className="!w-auto max-w-[260px] py-1.5 text-[12.5px]">
           <option value="">ทุกแพ็กเกจ</option>
           {plans.map((p) => (
             <option key={p} value={p}>
@@ -218,7 +185,7 @@ export function MembersClient({ members }: { members: Member[] }) {
             </option>
           ))}
         </Select>
-        <Select value={status} onChange={(e) => reset(setStatus)(e.target.value as MemberStatus | "")} aria-label="กรองตามสถานะ" className="w-auto py-1.5 text-[12.5px]">
+        <Select value={status} onChange={(e) => reset(setStatus)(e.target.value as MemberStatus | "")} aria-label="กรองตามสถานะ" className="!w-auto py-1.5 text-[12.5px]">
           <option value="">ทุกสถานะ</option>
           {(Object.keys(STATUS_LABEL) as MemberStatus[]).map((key) => (
             <option key={key} value={key}>

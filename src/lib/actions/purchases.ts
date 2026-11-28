@@ -149,6 +149,8 @@ export async function sellPt(formData: FormData): Promise<Result> {
   return { success: true };
 }
 
+const MAX_DOCUMENTS = 12;
+
 export type SaleResult = { error?: string; success?: boolean; memberId?: string; memberName?: string; lines?: string[] };
 
 // The one-screen sale: a seller picks or adds the customer, then records a
@@ -226,10 +228,17 @@ export async function recordSale(formData: FormData): Promise<SaleResult> {
   const proofPath = field("proof_path");
   if (proofPath && !new RegExp(`^${staffer.branch_id}/[0-9a-f-]{36}\\.jpg$`).test(proofPath)) return { error: "ไฟล์หลักฐานการชำระเงินไม่ถูกต้อง", memberId, memberName };
 
+  // Contract and other papers: any number of photos, uploaded the same way.
+  const documentPaths = formData.getAll("document_paths").map(String).filter(Boolean);
+  if (documentPaths.length > MAX_DOCUMENTS) return { error: `แนบเอกสารได้ไม่เกิน ${MAX_DOCUMENTS} รูปต่อการขาย`, memberId, memberName };
+  if (documentPaths.some((path) => !new RegExp(`^${staffer.branch_id}/[0-9a-f-]{36}\\.jpg$`).test(path))) {
+    return { error: "ไฟล์เอกสารที่แนบไม่ถูกต้อง", memberId, memberName };
+  }
+
   const lines: string[] = [];
   const earlier = async (kind: "membership" | "pt") =>
     ((await supabase.from("member_purchases").select("id", { count: "exact", head: true }).eq("member_id", memberId).eq("kind", kind)).count ?? 0) > 0;
-  const base = { branch_id: staffer.branch_id, member_id: memberId, payment_method: method, sold_by: soldBy, purchased_on: purchasedOn, note, created_by: staffer.id, ...(proofPath ? { proof_path: proofPath } : {}) };
+  const base = { branch_id: staffer.branch_id, member_id: memberId, payment_method: method, sold_by: soldBy, purchased_on: purchasedOn, note, created_by: staffer.id, ...(proofPath ? { proof_path: proofPath } : {}), ...(documentPaths.length ? { document_paths: documentPaths } : {}) };
 
   if (pkg) {
     const { error } = await supabase.from("member_purchases").insert({

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select } from "@/components/ui/Input";
 import { StatTile } from "@/components/ui/StatTile";
-import { ProofLink } from "@/components/ProofLink";
+import { SaleFiles } from "@/components/ProofLink";
 import { changePurchaseEnd, deletePurchase, sellPackage, sellPt, updateMemberDetails } from "@/lib/actions/purchases";
 import { expiryLabel, expiryState, formatDateTh, membershipEnd, suggestedStart, todayBangkok } from "@/lib/dates";
 import { formatBaht } from "@/lib/format";
@@ -334,14 +334,12 @@ function PurchaseRow({ purchase, memberId, sellerName, isOwner }: { purchase: Me
         </div>
       </div>
       {purchase.note && <div className="mt-1 text-xs text-text-lo">หมายเหตุ: {purchase.note}</div>}
-      {purchase.proof_path && (
-        <div className="mt-1">
-          <ProofLink purchaseId={purchase.id} />
-        </div>
-      )}
+      <div className="mt-1 empty:hidden">
+        <SaleFiles purchase={purchase} />
+      </div>
       {editing && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} className="w-44" aria-label="วันหมดอายุใหม่" />
+          <Input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} className="!w-44" aria-label="วันหมดอายุใหม่" />
           <Button
             variant="primary"
             disabled={pending || !endsOn}

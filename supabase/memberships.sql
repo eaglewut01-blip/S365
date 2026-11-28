@@ -90,6 +90,8 @@ create unique index if not exists member_purchases_legacy_code_idx on public.mem
 -- A photo of the payment slip or card receipt for a sale, kept in a private
 -- Storage bucket under the branch's own folder.
 alter table public.member_purchases add column if not exists proof_path text;
+-- Photos of the signed contract and any other papers for the sale, in the same private bucket.
+alter table public.member_purchases add column if not exists document_paths text[] not null default '{}';
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('payment-proofs', 'payment-proofs', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])

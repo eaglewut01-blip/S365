@@ -32,7 +32,7 @@ function PasswordButton({ userId, name }: { userId: string; name: string }) {
         placeholder="รหัสผ่านใหม่"
         aria-label={`รหัสผ่านใหม่ของ ${name}`}
         autoComplete="off"
-        className="w-36 py-1 text-xs"
+        className="!w-36 py-1 text-xs"
       />
       <button
         disabled={pending || password.length < 6}
@@ -162,7 +162,7 @@ export function TeamClient({
             className="w-full rounded-lg border border-border bg-panel-raised px-3 py-2 font-body text-[13.5px] text-text-hi outline-none placeholder:text-text-faint"
           />
           <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-            <Select name="role" defaultValue="trainer" className="w-auto" aria-label="บทบาทของทุกคนในรายการ">
+            <Select name="role" defaultValue="trainer" className="!w-auto" aria-label="บทบาทของทุกคนในรายการ">
               <option value="trainer">ทุกคนเป็นเทรนเนอร์</option>
               <option value="staff">ทุกคนเป็นพนักงาน</option>
             </Select>

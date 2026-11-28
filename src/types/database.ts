@@ -118,6 +118,7 @@ export interface MemberPurchase {
   pt_sessions: number;
   is_renewal: boolean;
   proof_path: string | null;
+  document_paths?: string[] | null;
   note: string | null;
   created_at: string;
 }
