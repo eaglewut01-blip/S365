@@ -709,3 +709,23 @@ alter table public.profiles add constraint profiles_role_check
 drop policy if exists "purchases_trainer_select" on public.member_purchases;
 create policy "purchases_trainer_select" on public.member_purchases for select
   to authenticated using (public.current_role() = 'trainer' and (sold_by = auth.uid() or trainer_id = auth.uid()));
+
+-- Trainers see the whole team's day (who trains, who is free, hour by hour) so
+-- they can tell which hours are open. Only the kind of each hour is returned,
+-- never another trainer's client names.
+create or replace function public.team_schedule(p_date date)
+returns table (trainer_id uuid, hour smallint, kind text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.trainer_id, s.hour, s.kind
+    from public.trainer_slots s
+   where s.work_date = p_date
+     and s.branch_id = public.current_branch()
+     and public.current_role() in ('owner', 'staff', 'trainer');
+$$;
+
+revoke all on function public.team_schedule(date) from public, anon;
+grant execute on function public.team_schedule(date) to authenticated;

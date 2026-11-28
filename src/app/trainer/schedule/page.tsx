@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { DayNav, dateParam } from "@/components/DayNav";
@@ -21,6 +22,9 @@ export default async function TrainerSchedulePage({ searchParams }: { searchPara
       <h1 className="m-0 font-heading text-2xl font-bold text-text-hi">ลงตารางของฉัน</h1>
       <p className="mt-1.5 mb-4 font-body text-[13.5px] text-text-lo">ลงทุกเช้าว่าแต่ละชั่วโมงเทรนใคร เทสต์ลูกค้า หรือว่าง ผู้จัดการจะเห็นว่าใครว่างช่วงไหน</p>
       <DayNav basePath="/trainer/schedule" date={date} />
+      <Link href={`/trainer/team-schedule?d=${date}`} className="mb-4 inline-block text-[13.5px] text-volt">
+        ดูตารางของเทรนเนอร์ทุกคนในวันนี้
+      </Link>
       {slots.error ? (
         <div className="rounded-xl border border-amber bg-amber-bg p-[18px] text-[13.5px] leading-relaxed text-text-hi">
           ยังใช้หน้านี้ไม่ได้ แจ้งเจ้าของให้รันไฟล์ <code>supabase/memberships.sql</code> ใน Supabase ก่อน
