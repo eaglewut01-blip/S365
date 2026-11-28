@@ -38,7 +38,7 @@ function TrainerSelect({ client, trainers }: { client: PtClient; trainers: Train
         }}
         className="!w-auto min-w-[130px] py-1.5 text-[12.5px]"
       >
-        <option value="">{client.legacyTrainer ? `${client.legacyTrainer} (ระบบเดิม)` : "ยังไม่ระบุ"}</option>
+        <option value="">ยังไม่ระบุ</option>
         {trainers.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
@@ -60,10 +60,12 @@ export function ClientsTable({ clients, trainers }: { clients: PtClient[]; train
   const [linkMessage, setLinkMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
-  // A client belongs to the trainer's account if set, else to the name from the previous system.
+  // A client belongs to a trainer only through a current trainer account.
+  // Clients of trainers who have left (a name carried over from the previous
+  // system, with no account here) are all "no trainer yet", ready to hand on.
   const names = new Map(trainers.map((t) => [t.id, t.name]));
-  const groupOf = (c: PtClient) => (c.trainerId && names.has(c.trainerId) ? `id:${c.trainerId}` : c.legacyTrainer ? `old:${c.legacyTrainer}` : NO_TRAINER);
-  const labelOf = (key: string) => (key === NO_TRAINER ? "ยังไม่ระบุเทรนเนอร์" : key.startsWith("id:") ? names.get(key.slice(3)) ?? "" : `${key.slice(4)} (ระบบเดิม)`);
+  const groupOf = (c: PtClient) => (c.trainerId && names.has(c.trainerId) ? `id:${c.trainerId}` : NO_TRAINER);
+  const labelOf = (key: string) => (key === NO_TRAINER ? "ยังไม่ระบุเทรนเนอร์" : names.get(key.slice(3)) ?? "");
   const matchHours = (c: PtClient, mode: typeof hours) => (mode === "all" ? true : mode === "out" ? c.left === 0 : mode === "low" ? c.left > 0 && c.left <= PT_LOW_HOURS : c.left > 0);
 
   const groups = new Map<string, PtClient[]>();
@@ -78,7 +80,11 @@ export function ClientsTable({ clients, trainers }: { clients: PtClient[]; train
     set(v);
     setShown(PAGE);
   };
-  const canLink = trainers.length > 0 && clients.some((c) => !c.trainerId && c.legacyTrainer);
+  // Offer the linking button only while it would still match someone: an
+  // unassigned client whose previous trainer has an account here by that name.
+  const plain = (name: string) => name.trim().replace(/^PT[.\s]*/i, "").toLowerCase();
+  const accountNames = new Set(trainers.map((t) => plain(t.name)));
+  const canLink = clients.some((c) => !c.trainerId && c.legacyTrainer && accountNames.has(plain(c.legacyTrainer)));
 
   return (
     <>
@@ -143,7 +149,7 @@ export function ClientsTable({ clients, trainers }: { clients: PtClient[]; train
 
       {canLink && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-panel px-4 py-3 text-[12.5px] text-text-lo">
-          <span>ลูกค้าที่ขึ้นว่า (ระบบเดิม) ยังไม่ได้ผูกกับบัญชีเทรนเนอร์ กดปุ่มนี้เพื่อผูกให้เทรนเนอร์ที่ชื่อตรงกัน</span>
+          <span>มีลูกค้าจากระบบเดิมที่เทรนเนอร์มีบัญชีแล้วแต่ยังไม่ได้ผูก กดปุ่มนี้เพื่อผูกให้เทรนเนอร์ที่ชื่อตรงกัน</span>
           <Button
             disabled={pending}
             onClick={() =>
@@ -176,6 +182,8 @@ export function ClientsTable({ clients, trainers }: { clients: PtClient[]; train
                   <Link href={`/owner/members/${c.id}`} className="font-medium text-text-hi no-underline hover:text-volt">
                     {c.name}
                   </Link>
+                  {/* Who trained them before, for the call; the trainer has no account here. */}
+                  {!(c.trainerId && names.has(c.trainerId)) && c.legacyTrainer && <div className="text-[11.5px] text-text-faint">เคยเทรนกับ {c.legacyTrainer}</div>}
                 </td>
                 <td className="px-4 py-2.5">
                   {c.phone ? (
